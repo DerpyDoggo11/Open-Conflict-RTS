@@ -16,23 +16,20 @@ export function getTileGidFromPosition(firstGid: number, column: number, row: nu
 }
 
 export function tileToScreen(tileX: number, tileY: number, mapData: TiledMap): { x: number, y: number } {
-  const isoX = (tileX - tileY) * (mapData.tilewidth / 2) + (mapData.tilewidth / 2);
-  const isoY = (tileX + tileY) * (mapData.tileheight / 2) + mapData.tileheight;
-
+  const isoX = (tileX - tileY) * (mapData.tilewidth / 2);
+  const isoY = (tileX + tileY) * (mapData.tileheight / 2);
   return { x: isoX, y: isoY };
 }
 
-export function screenToTile(screenX: number, screenY: number, mapData: TiledMap): { tileX: number, tileY: number } {
+export function screenToTile(screenX: number, screenY: number, mapData: TiledMap) {
   const hw = mapData.tilewidth / 2;
   const hh = mapData.tileheight / 2;
-
-  const sx = screenX - hw - hw;
-  const sy = screenY - mapData.tileheight - mapData.tileheight;
-
-  const tileX = Math.round((sx / hw + sy / hh) / 2);
-  const tileY = Math.round((sy / hh - sx / hw) / 2);
-
-  return { tileX, tileY };
+  const tx = (screenX / hw + screenY / hh) / 2;
+  const ty = (screenY / hh - screenX / hw) / 2;
+  return {
+    tileX: Math.round(tx),
+    tileY: Math.round(ty)
+  };
 }
 
 export function getChunkedTileGid(tileX: number, tileY: number, mapData: TiledMap, layerName: string): number {

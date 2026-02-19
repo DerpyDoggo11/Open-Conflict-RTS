@@ -9,8 +9,8 @@ export function createOceanMesh(
   const TILE_W = mapData.tilewidth * 2;
   const TILE_H = mapData.tileheight * 2;
   const SPREAD = 6;
-  const totalCols = mapData.width + SPREAD * 2;
-  const totalRows = mapData.height + SPREAD * 2;
+  const totalCols = mapData.width + SPREAD * 4;
+  const totalRows = mapData.height + SPREAD * 4;
   const offsetX = -(totalCols / 2);
   const offsetY = -(totalRows / 2);
 
@@ -33,9 +33,9 @@ export function createOceanMesh(
 
   const getColor = (waveY: number): number => {
     const t = (waveY + 28) / 56;
-    const deep =    { r: 0.04, g: 0.30, b: 0.35 };
-    const shallow = { r: 0.08, g: 0.45, b: 0.50 };
-    const foam =    { r: 0.55, g: 0.75, b: 0.78 };
+    const deep =    { r: 0.29, g: 0.529, b: 0.549 }; //rgb01(0.29, 0.529, 0.549)
+    const shallow = { r: 0.29, g: 0.529, b: 0.549 }; //rgb01(0.42, 0.741, 0.769)
+    const foam =    { r: 0.349, g: 0.624, b: 0.651 };
 
     let r, g, b;
     if (t < 0.6) {
