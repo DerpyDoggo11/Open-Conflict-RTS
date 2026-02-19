@@ -1,67 +1,91 @@
 import * as PIXI from 'pixi.js';
 import { loadTiledMap } from './code/tilemap/tilemapLoader';
-import { createOceanBackground } from './code/tilemap/oceanBackground';
+import { createOceanMesh } from './code/tilemap/oceanBackground';
 import { spawnCharacter } from './code/entities/entityUtils';
 import { setupCamera } from './code/entities/camera';
+import { CompositeTilemap } from '@pixi/tilemap';
+import { clearSelection, spawnSelectionRadius, swapNearbyTrees } from './code/entities/selectionUtils';
+import { screenToTile } from './code/tilemap/tilemapUtils';
 
 
 async function main() {
   const app = new PIXI.Application();
-  await app.init({ background: '#222', resizeTo: window });
+  await app.init({ background: '#222', resizeTo: window, preference: 'webgl' });
   document.body.appendChild(app.canvas);
   
   const viewport = new PIXI.Container();
   app.stage.addChild(viewport);
 
-  await createOceanBackground(app, viewport);
-
   
   // Load the tilemap and keep reference to mapData
-  const { tilemap, tilesetTextures, mapData } = await loadTiledMap(
+  const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
     './src/assets/tilemaps/grasslands.json'
   );
-  viewport.addChild(tilemap);
+  const groundTilemap = tilemaps.get('Ground')!;
+  const objectsTilemap = tilemaps.get('Objects')!;
+  groundTilemap.label = 'Ground';
+  objectsTilemap.label = 'Objects';
   
-  // const overlayFirstGid = 1000;
-  
-  // // Load the overlay tileset and get dimensions
-  // const overlayTexture = await PIXI.Assets.load('./src/assets/tilesets/256x128 Tile Overlays.png');
-  // const tilesPerRow = Math.floor(overlayTexture.width / 256);
-  
-  // await loadOverlayTileset(
-  //   tilesetTextures,
-  //   './src/assets/tilesets/256x128 Tile Overlays.png',
-  //   overlayFirstGid,
-  //   256,
-  //   128
-  // );
-  
-  
-  // Spawn a character at tile position (10, 10)
+  const selectionTilemap = new CompositeTilemap();
+  selectionTilemap.label = 'Selection';
+
+  const characterContainer = new PIXI.Container();
+
+  viewport.addChild(groundTilemap);
+  viewport.addChild(characterContainer);
+  viewport.addChild(selectionTilemap);
+  viewport.addChild(objectsTilemap);
+
+  createOceanMesh(app, viewport, mapData);
+
+
   const character = await spawnCharacter(
-    0, 0, 
+    9, -1, 
     mapData, 
-    viewport, 
+    characterContainer, 
     './src/assets/troops/general/0003.png'
   );
   character.scale.set(0.5,0.5);
   
-  // const targetTileGid = getTileGidFromPosition(
-  //   overlayFirstGid,
-  //   2,  // 3 to the right (column 3)
-  //   5,  // 6 down (row 6)
-  //   tilesPerRow
-  // );
-  
-  // setTile(tilemap, mapData, 'selectionLayer', 25, 15, targetTileGid, tilesetTextures);
+  let isSelected = false;
+  let charTileX = 9;
+  let charTileY = -1;
+  const SELECTION_GID = 5;
+  const SELECTION_RADIUS = 4;
+
+  app.stage.eventMode = 'static';
+  app.stage.hitArea = app.screen;
+
+  const TREE_SWAP_RADIUS = 4;
+
+  app.stage.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
+    const worldPos = viewport.toLocal(e.global);
+    const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, mapData);
+
+    const isClickOnCharTile = tileX === charTileX && tileY === charTileY;
+
+    if (isClickOnCharTile) {
+      if (isSelected) {
+        clearSelection(selectionTilemap);
+        swapNearbyTrees(objectsTilemap, tilesetTextures, charTileX, charTileY, TREE_SWAP_RADIUS, mapData, false);
+        isSelected = false;
+      } else {
+        spawnSelectionRadius(selectionTilemap, tilesetTextures, charTileX, charTileY, SELECTION_RADIUS, SELECTION_GID, mapData);
+        swapNearbyTrees(objectsTilemap, tilesetTextures, charTileX, charTileY, TREE_SWAP_RADIUS, mapData, true);
+        isSelected = true;
+      }
+    } else if (isSelected) {
+      clearSelection(selectionTilemap);
+      swapNearbyTrees(objectsTilemap, tilesetTextures, charTileX, charTileY, TREE_SWAP_RADIUS, mapData, false);
+      isSelected = false;
+    }
+  });
 
 
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
   viewport.scale.set(0.5, 0.5);
   
   setupCamera(app, viewport);
-  
-  console.log('Character spawned at tile (10, 10)');
 }
 
 main();
