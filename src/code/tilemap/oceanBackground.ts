@@ -52,36 +52,30 @@ export function createOceanMesh(
     return (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
   };
 
-  // Build the island diamond mask shape
-  // Map diamond corners in screen space
   const halfW = (mapData.width / 2) * (TILE_W / 2) * 2;
   const halfH = (mapData.height / 2) * (TILE_H / 2) * 2;
   const diamondPoints = [
-     0,      -halfH,  // top
-     halfW,   0,      // right
-     0,       halfH,  // bottom
-    -halfW,   0,      // left
+     0, -halfH,
+     halfW, 0,
+     0, halfH, 
+    -halfW, 0, 
   ];
 
-  // Back ocean — behind everything
   const oceanBack = new PIXI.Graphics();
   viewport.addChildAt(oceanBack, 0);
 
-  // Front ocean — on top of Objects layer, masked to outside the island
   const oceanFront = new PIXI.Graphics();
 
   const mask = new PIXI.Graphics();
-  // Large rect covering whole ocean area
   const bigSize = 20000;
   mask.rect(-bigSize / 2, -bigSize / 2, bigSize, bigSize);
   mask.fill(0xffffff);
-  // Cut out the island diamond
   mask.poly(diamondPoints);
   mask.cut();
 
   oceanFront.mask = mask;
   viewport.addChild(mask);
-  viewport.addChild(oceanFront); // added after Objects layer in main.ts
+  viewport.addChild(oceanFront); 
 
   const drawOcean = (g: PIXI.Graphics, time: number) => {
     g.clear();

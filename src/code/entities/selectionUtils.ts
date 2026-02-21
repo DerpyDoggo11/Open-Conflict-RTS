@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { CompositeTilemap } from '@pixi/tilemap';
 import { type TiledMap } from '../types/tilemapTypes';
-import { getChunkedTileGid, tileToScreen } from '../tilemap/tilemapUtils';
+import { getChunkedTileGid, isTileInWalkableBounds, tileToScreen } from '../tilemap/tilemapUtils';
 
 const TREE_GID = 2;
 const TRANSPARENT_TREE_GID = 4;
@@ -26,83 +26,115 @@ export function drawArrowToTile(
   const from = tileToScreen(fromTileX, fromTileY, mapData);
   const to = tileToScreen(toTileX, toTileY, mapData);
 
-  // Offset both points to the visual center of the diamond
-  const cx = mapData.tilewidth / 2;
-  const cy = mapData.tileheight / 2;
+  const cy = -mapData.tileheight / 2;
 
-  const x1 = from.x + cx;
+  const x1 = from.x;
   const y1 = from.y + cy;
-  const x2 = to.x + cx;
+  const x2 = to.x;
   const y2 = to.y + cy;
 
   const dx = x2 - x1;
   const dy = y2 - y1;
   const angle = Math.atan2(dy, dx);
-  const headLen = 14;
+  const headLen = 60;
+  const lineWidth = 20;
 
-  // Line
-  arrowGraphics.lineStyle(3, 0xffffff, 0.9);
-  arrowGraphics.moveTo(x1, y1);
-  arrowGraphics.lineTo(x2, y2);
+  const lineEndX = x2 - headLen * Math.cos(angle);
+  const lineEndY = y2 - headLen * Math.sin(angle);
 
-  // Arrowhead
-  arrowGraphics.beginFill(0xffffff, 0.9);
-  arrowGraphics.moveTo(x2, y2);
-  arrowGraphics.lineTo(
-    x2 - headLen * Math.cos(angle - Math.PI / 6),
-    y2 - headLen * Math.sin(angle - Math.PI / 6)
-  );
-  arrowGraphics.lineTo(
-    x2 - headLen * Math.cos(angle + Math.PI / 6),
-    y2 - headLen * Math.sin(angle + Math.PI / 6)
-  );
-  arrowGraphics.closePath();
-  arrowGraphics.endFill();
+  arrowGraphics
+    .moveTo(x1, y1)
+    .lineTo(lineEndX, lineEndY)
+    .stroke({ width: lineWidth, color: 0xffffff, alpha: 0.9 });
+
+  arrowGraphics
+    .moveTo(x2, y2)
+    .lineTo(
+      x2 - headLen * Math.cos(angle - Math.PI / 6),
+      y2 - headLen * Math.sin(angle - Math.PI / 6)
+    )
+    .lineTo(
+      x2 - headLen * Math.cos(angle + Math.PI / 6),
+      y2 - headLen * Math.sin(angle + Math.PI / 6)
+    )
+    .closePath()
+    .fill({ color: 0xffffff, alpha: 1 });
 }
-
 export function clearArrow(): void {
   arrowGraphics?.clear();
 }
 
 
+const selectionSprites: PIXI.Sprite[] = [];
+let selectionContainer: PIXI.Container | null = null;
+
+export function initSelection(container: PIXI.Container): void {
+  selectionContainer = container;
+}
+
 export function spawnSelectionRadius(
-  selectionTilemap: CompositeTilemap,
   tilesetTextures: Map<number, PIXI.Texture>,
   centerX: number,
   centerY: number,
   radius: number,
   selectionGid: number,
-  mapData: TiledMap
+  mapData: TiledMap,
+  onHover: (tileX: number, tileY: number) => void,
+  onHoverOut: () => void,
+  onClick: (tileX: number, tileY: number) => void,
 ): void {
-  selectionTilemap.clear();
+  clearSelection();
+  if (!selectionContainer) return;
+
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
       if (Math.abs(dx) + Math.abs(dy) > radius) continue;
       const tileX = centerX + dx;
       const tileY = centerY + dy;
+      if (!isTileInWalkableBounds(tileX, tileY, mapData)) continue;
+      if (tileX === centerX && tileY === centerY) continue;
 
-      const groundGid = getChunkedTileGid(tileX, tileY, mapData, 'Ground');
-      console.log(`Tile (${tileX}, ${tileY}) -> groundGid: ${groundGid}`);
-      if (!groundGid) continue;
-
-      
       const texture = tilesetTextures.get(selectionGid);
-    console.log(`Selection texture size: ${texture?.width} x ${texture?.height}`);
-    console.log(`Map tile size: ${mapData.tilewidth} x ${mapData.tileheight}`);
       if (!texture) continue;
 
-    
       const screenPos = tileToScreen(tileX, tileY, mapData);
-      const xOffset = -(texture.width / 2);
-      const yOffset = -(texture.height / 2);
-      selectionTilemap.tile(texture, screenPos.x + xOffset, screenPos.y + yOffset);
+      const sprite = new PIXI.Sprite(texture);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.position.set(screenPos.x, screenPos.y);
+      sprite.eventMode = 'static';
+      sprite.cursor = 'pointer';
+
+      sprite.on('pointerenter', () => onHover(tileX, tileY));
+      sprite.on('pointerleave', () => onHoverOut());
+      sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
+        e.stopPropagation();
+      });
+
+      sprite.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
+        e.stopPropagation();
+        onClick(tileX, tileY);
+      });
+
+      selectionContainer.addChild(sprite);
+      selectionSprites.push(sprite);
     }
   }
 }
 
-export function clearSelection(selectionTilemap: CompositeTilemap): void {
-  selectionTilemap.clear();
+export function clearSelection(): void {
+  for (const sprite of selectionSprites) {
+    sprite.destroy();
+  }
+  selectionSprites.length = 0;
 }
+
+export function closeSelection(objectsTilemap: CompositeTilemap, tilesetTextures: Map<number, PIXI.Texture<PIXI.TextureSource<any>>>, charTileX: number, charTileY: number, TREE_SWAP_RADIUS: number, mapData: TiledMap) {
+  clearSelection();
+  clearArrow();
+  swapNearbyTrees(objectsTilemap, tilesetTextures, charTileX, charTileY, TREE_SWAP_RADIUS, mapData, false);
+  swapNearbyTrees(objectsTilemap, tilesetTextures, charTileX, charTileY, 3, mapData, true);
+}
+
 
 export function swapNearbyTrees(objectsTilemap: CompositeTilemap, tilesetTextures: Map<number, PIXI.Texture>, centerX: number, centerY: number, radius: number, mapData: TiledMap, makeTransparent: boolean): void {
   objectsTilemap.clear();

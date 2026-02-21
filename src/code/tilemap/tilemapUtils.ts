@@ -45,3 +45,37 @@ export function getChunkedTileGid(tileX: number, tileY: number, mapData: TiledMa
   }
   return 0;
 }
+
+function pointInPolygon(px: number, py: number, polygon: { x: number; y: number }[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function tiledPixelToTile(px: number, py: number, mapData: TiledMap): { tileX: number, tileY: number } {
+  const tileX = (px / mapData.tilewidth + py / mapData.tileheight);
+  const tileY = (py / mapData.tileheight - px / mapData.tilewidth);
+  return { tileX, tileY };
+}
+
+export function isTileInWalkableBounds(tileX: number, tileY: number, mapData: TiledMap): boolean {
+  const layer = mapData.layers.find(l => l.name === 'Walkable');
+  if (!layer?.objects?.[0]?.polygon) return false;
+
+  const obj = layer.objects[0];
+
+  const gameSpacePolygon = obj.polygon!.map(p => {
+    const absX = obj.x + p.x;
+    const absY = obj.y + p.y;
+    const tile = tiledPixelToTile(absX, absY, mapData);
+    return tileToScreen(tile.tileX, tile.tileY, mapData);
+  });
+
+  const screenPos = tileToScreen(tileX, tileY, mapData);
+  return pointInPolygon(screenPos.x, screenPos.y, gameSpacePolygon);
+}

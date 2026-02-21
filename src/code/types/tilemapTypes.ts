@@ -1,3 +1,13 @@
+export interface TiledObject {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  name?: string;
+  type?: string;
+  polygon?: { x: number; y: number }[];
+}
+
 export interface TiledMap {
   width: number;
   height: number;
@@ -22,6 +32,7 @@ export interface TiledLayer {
   name: string;
   data?: number[];
   chunks?: TiledChunk[];
+  objects?: TiledObject[];
   width: number;
   height: number;
   visible: boolean;

@@ -219,9 +219,48 @@
          "width":0,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":6,
+         "name":"Walkable",
+         "objects":[
+                {
+                 "height":0,
+                 "id":14,
+                 "name":"",
+                 "polygon":[
+                        {
+                           "x": 3202.6,
+                           "y": 131.98
+                        }, 
+                        {
+                           "x": 389.22,
+                           "y": 1538.65
+                        }, 
+                        {
+                           "x": -3059.86,
+                           "y": -203.01
+                        }, 
+                        {
+                           "x": -250.62,
+                           "y": -1603.25
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":0,
+                 "y":0
+                }],
+         "opacity":0,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
         }],
- "nextlayerid":5,
- "nextobjectid":1,
+ "nextlayerid":7,
+ "nextobjectid":18,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
@@ -278,7 +317,7 @@
          "tilecount":1,
          "tileheight":512,
          "tilewidth":256
-        },
+        }, 
         {
          "columns":1,
          "firstgid":5,
@@ -291,7 +330,7 @@
          "tilecount":1,
          "tileheight":256,
          "tilewidth":256
-        },
+        }, 
         {
          "columns":1,
          "firstgid":6,
@@ -304,7 +343,7 @@
          "tilecount":1,
          "tileheight":256,
          "tilewidth":256
-        },
+        }, 
         {
          "columns":1,
          "firstgid":7,
@@ -317,7 +356,7 @@
          "tilecount":1,
          "tileheight":256,
          "tilewidth":256
-        },
+        }, 
         {
          "columns":1,
          "firstgid":8,

@@ -24,18 +24,6 @@ export async function loadTiledMap(mapPath: string): Promise<{tilemaps: Map<stri
     }
   }
 
-  // Compute the minimum chunk origin across all chunked layers to normalize coordinates
-  // let originX = Infinity, originY = Infinity;
-  // for (const layer of mapData.layers) {
-  //   if (layer.chunks) {
-  //     for (const chunk of layer.chunks) {
-  //       originX = Math.min(originX, chunk.x);
-  //       originY = Math.min(originY, chunk.y);
-  //     }
-  //   }
-  // }
-  // if (!isFinite(originX)) originX = 0;
-  // if (!isFinite(originY)) originY = 0;
 
   const DIAMOND_WIDTH = mapData.tilewidth;
   const DIAMOND_HEIGHT = mapData.tilewidth / 2;
@@ -57,8 +45,8 @@ export async function loadTiledMap(mapPath: string): Promise<{tilemaps: Map<stri
 
           const localX = i % chunk.width;
           const localY = Math.floor(i / chunk.width);
-          const globalX = (chunk.x + localX) //- originX;
-          const globalY = (chunk.y + localY) //- originY;
+          const globalX = (chunk.x + localX) 
+          const globalY = (chunk.y + localY) 
 
           const isoX = (globalX - globalY) * (DIAMOND_WIDTH / 2);
           const isoY = (globalX + globalY) * (DIAMOND_HEIGHT / 2);
