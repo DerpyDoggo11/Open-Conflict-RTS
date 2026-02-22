@@ -19,7 +19,7 @@ async function main() {
   app.stage.addChild(viewport);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
-    './src/assets/tilemaps/grasslands.json'
+    './assets/tilemaps/grasslands.json'
   );
 
   const groundTilemap = tilemaps.get('Ground')!;
@@ -50,7 +50,7 @@ async function main() {
     10, -1,
     mapData,
     characterContainer,
-    './src/assets/troops/general/0004.png'
+    './assets/troops/general/0004.png'
   );
   character.scale.set(0.5, 0.5);
 
@@ -62,13 +62,9 @@ async function main() {
       selectionGid: 6,
       selectionRadius: 2,
       treeSwapRadius: 5,
-      spritePath: './src/assets/troops/general/',
+      spritePath: './assets/troops/general/',
     }
   );
-
-
-
-
 
 
   viewport.pivot.set(0, 0);
