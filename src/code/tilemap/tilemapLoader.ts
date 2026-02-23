@@ -8,7 +8,7 @@ export async function loadTiledMap(mapPath: string): Promise<{tilemaps: Map<stri
 
   for (const tileset of mapData.tilesets) {
     if (tileset.image) {
-      const texture = await PIXI.Assets.load(`./src/assets/tilesets/${tileset.image}`);
+      const texture = await PIXI.Assets.load(`./assets/tilesets/${tileset.image}`);
       const tilesPerRow = tileset.columns || Math.floor(tileset.imagewidth! / tileset.tilewidth!);
       const totalTiles = Math.floor(tileset.imagewidth! / tileset.tilewidth!) * Math.floor(tileset.imageheight! / tileset.tileheight!);
 
