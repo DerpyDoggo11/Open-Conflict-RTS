@@ -66,6 +66,65 @@ async function main() {
     }
   );
 
+  const grunt = await spawnCharacter(
+    9, -1,
+    mapData,
+    characterContainer,
+    './assets/troops/grunt/0004.png'
+  );
+  grunt.scale.set(0.5, 0.5);
+
+  const gruntMovement = new CharacterMovement(
+    grunt, 9, -1,
+    app, viewport,
+    objectsTilemap, tilesetTextures, mapData,
+    {
+      selectionGid: 6,
+      selectionRadius: 2,
+      treeSwapRadius: 5,
+      spritePath: './assets/troops/grunt/',
+    }
+  );
+
+  const machineGunner = await spawnCharacter(
+    8, -1,
+    mapData,
+    characterContainer,
+    './assets/troops/machineGunner/0004.png'
+  );
+  machineGunner.scale.set(0.5, 0.5);
+
+  const machineGunnerMovement = new CharacterMovement(
+    machineGunner, 8, -1,
+    app, viewport,
+    objectsTilemap, tilesetTextures, mapData,
+    {
+      selectionGid: 6,
+      selectionRadius: 2,
+      treeSwapRadius: 5,
+      spritePath: './assets/troops/machineGunner/',
+    }
+  );
+
+  const tankDestroyer = await spawnCharacter(
+    7, -1,
+    mapData,
+    characterContainer,
+    './assets/troops/tankDestroyer/0004.png'
+  );
+
+  const tankDestroyerMovement = new CharacterMovement(
+    tankDestroyer, 7, -1,
+    app, viewport,
+    objectsTilemap, tilesetTextures, mapData,
+    {
+      selectionGid: 6,
+      selectionRadius: 5,
+      treeSwapRadius: 5,
+      spritePath: './assets/troops/tankDestroyer/',
+    }
+  );
+
 
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
