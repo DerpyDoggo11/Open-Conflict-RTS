@@ -3,17 +3,36 @@ import { loadTiledMap } from './code/tilemap/tilemapLoader';
 import { createOceanMesh } from './code/tilemap/oceanBackground';
 import { spawnCharacter } from './code/entities/entityUtils';
 import { setupCamera } from './code/entities/camera';
-import {
-  clearArrow, clearSelection, closeSelection, drawArrowToTile,
-  initArrow, initSelection, spawnSelectionRadius, swapNearbyTrees
-} from './code/entities/selectionUtils';
+import { initArrow, initSelection } from './code/entities/selectionUtils';
 import { DebugOverlay } from './code/ui/debugOverlay';
 import { CharacterMovement } from './code/entities/entityMovement';
+import { gameMenu, menu, UIHandler } from './code/ui';
+
 
 async function main() {
   const app = new PIXI.Application();
   await app.init({ background: '#cfe4e7', resizeTo: window, preference: 'webgl' });
+
+  app.canvas.style.position = 'fixed';
+  app.canvas.style.top = '0';
+  app.canvas.style.left = '0';
+
   document.body.appendChild(app.canvas);
+
+  const ui = new UIHandler();
+  const inGameMenu = new gameMenu(ui);
+
+  ui
+    .register('main-menu', new menu(ui))
+    .register('in-game', inGameMenu);
+
+  ui.show('main-menu');
+
+  window.addEventListener('game:pause', (e) => {
+    const { paused } = (e as CustomEvent<{ paused: boolean }>).detail;
+    paused ? app.ticker.stop() : app.ticker.start();
+  });
+  
 
   const viewport = new PIXI.Container();
   app.stage.addChild(viewport);
@@ -32,18 +51,10 @@ async function main() {
 
   viewport.addChild(groundTilemap);
   viewport.addChild(objectsTilemap);
-
   initSelection(selectionContainer);
   initArrow(viewport);
-  
   viewport.addChild(characterContainer);
-
-  // const debugOverlay = new DebugOverlay(viewport, viewport);
-  // debugOverlay.initPolygonEditor(mapData, app);
-
   viewport.addChild(selectionContainer);
-
-
   createOceanMesh(app, viewport, mapData);
 
   const character = await spawnCharacter(
@@ -131,6 +142,12 @@ async function main() {
   viewport.scale.set(0.5, 0.5);
 
   setupCamera(app, viewport);
+  let metal = 0, supply = 0;
+  setInterval(() => {
+    metal += Math.floor(Math.random() * 10);
+    supply += Math.floor(Math.random() * 5);
+    inGameMenu.updateResources(metal, supply);
+  }, 1000);
 }
 
 main();
