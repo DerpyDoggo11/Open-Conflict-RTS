@@ -1,13 +1,192 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>open-conflict-rts</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>open-conflict-rts</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'bg-outer':    '#4f6490',
+            'bg-nav':      '#2e3f5c',
+            'bg-card':     '#374a6a',
+            'bg-panel':    '#2e3f5c',
+            'accent-teal': '#3a9e7e',
+            'accent-teal-hover': '#2d7d63',
+            'tab-active':  '#ffffff',
+            'tab-inactive':'#b0bdd0',
+          },
+          fontFamily: {
+            sans: ['"Segoe UI"', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 4px;
+      background: #2e3f5c;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3a9e7e;
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3a9e7e;
+      cursor: pointer;
+      border: 2px solid #fff;
+    }
+    .tab-indicator {
+      position: absolute;
+      bottom: 0;
+      height: 3px;
+      background: #ffffff;
+      border-radius: 2px 2px 0 0;
+      transition: left 0.25s ease, width 0.25s ease;
+    }
+    #app canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body class="bg-bg-outer min-h-screen flex flex-col overflow-hidden">
+
+  <nav class="bg-bg-nav relative flex items-center justify-center gap-10 px-8 py-4 shadow-lg">
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="play"
+    >Play</button>
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="loadouts"
+    >Loadouts</button>
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="settings"
+    >Settings</button>
+    <div class="tab-indicator" id="tab-indicator"></div>
+  </nav>
+
+  <main class="flex-1 flex items-start justify-center pt-12 px-6">
+
+    <div id="tab-play" class="tab-content w-full max-w-xl flex flex-col gap-4">
+
+      <div class="bg-bg-card rounded-lg p-5 shadow-md flex flex-col gap-2">
+        <p class="text-white text-xl font-semibold">Server 1</p>
+        <p class="text-green-400 text-sm font-medium">1/2 players</p>
+        <div class="flex justify-end mt-2">
+          <button
+            class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow"
+            onclick="startGame()"
+          >Join</button>
+        </div>
+      </div>
+
+      <div class="bg-bg-card rounded-lg p-5 shadow-md flex flex-col gap-2">
+        <p class="text-white text-xl font-semibold">Server 2</p>
+        <p class="text-red-400 text-sm font-medium">2/2 players</p>
+        <div class="flex justify-end mt-2">
+          <button
+            class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow"
+            onclick="startGame()"
+          >Join</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="tab-loadouts" class="tab-content hidden w-full max-w-xl flex flex-col gap-4">
+
+      <div class="bg-bg-card rounded-lg p-5 shadow-md">
+        <p class="text-white text-base font-semibold mb-3">Available Units:</p>
+        <div id="available-units" class="flex flex-wrap gap-3 min-h-[80px]">
+        </div>
+      </div>
+
+      <div class="bg-bg-card rounded-lg p-5 shadow-md">
+        <p class="text-white text-base font-semibold mb-3">Selected Units</p>
+        <div id="selected-units" class="flex flex-wrap gap-3 min-h-[80px]">
+        </div>
+      </div>
+
+    </div>
+
+    <div id="tab-settings" class="tab-content hidden w-full max-w-xl">
+      <div class="bg-bg-card rounded-lg p-6 shadow-md flex flex-col gap-5">
+        <div class="flex items-center gap-4">
+          <label class="text-white text-base font-semibold w-36">Volume:</label>
+          <div class="flex-1 flex items-center gap-3">
+            <input
+              type="range" min="0" max="100" value="60"
+              class="w-48"
+              id="volume-slider"
+              style="background: linear-gradient(to right, #3a9e7e 60%, #2e3f5c 60%);"
+              oninput="updateVolume(this)"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="text-white text-base font-semibold w-36">Graphics Quality:</label>
+          <div class="flex gap-2" id="quality-btns">
+            <button
+              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200"
+              data-quality="low"
+            >Low</button>
+            <button
+              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200"
+              data-quality="medium"
+            >Medium</button>
+            <button
+              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 active-quality"
+              data-quality="high"
+            >High</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <div id="app" class="hidden fixed inset-0 z-50">
+
+    
+    <div id="hud" class="absolute inset-0 pointer-events-none">
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 pointer-events-auto">
+        <button id="btn-move" class="hud-btn">
+          <img src="/assets/icons/move.png" alt="Move" class="w-8 h-8" />
+        </button>
+        <button id="btn-attack" class="hud-btn">
+          <img src="/assets/icons/attack.png" alt="Attack" class="w-8 h-8" />
+        </button>
+      </div>
+    </div>
+  </div>
+  
+
+  <script type="module" src="/src/mainMenu/mainMenu.ts"></script>
+</body>
 </html>
