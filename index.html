@@ -5,71 +5,7 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>open-conflict-rts</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'bg-outer':    '#4f6490',
-            'bg-nav':      '#2e3f5c',
-            'bg-card':     '#374a6a',
-            'bg-panel':    '#2e3f5c',
-            'accent-teal': '#3a9e7e',
-            'accent-teal-hover': '#2d7d63',
-            'tab-active':  '#ffffff',
-            'tab-inactive':'#b0bdd0',
-          },
-          fontFamily: {
-            sans: ['"Segoe UI"', 'system-ui', 'sans-serif'],
-          },
-        }
-      }
-    }
-  </script>
-  <style>
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      height: 8px;
-      border-radius: 4px;
-      background: #2e3f5c;
-      outline: none;
-      cursor: pointer;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #3a9e7e;
-      cursor: pointer;
-      border: 2px solid #fff;
-      box-shadow: 0 0 4px rgba(0,0,0,0.3);
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #3a9e7e;
-      cursor: pointer;
-      border: 2px solid #fff;
-    }
-    .tab-indicator {
-      position: absolute;
-      bottom: 0;
-      height: 3px;
-      background: #ffffff;
-      border-radius: 2px 2px 0 0;
-      transition: left 0.25s ease, width 0.25s ease;
-    }
-    #app canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-    }
-  </style>
+  <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body class="bg-bg-outer min-h-screen flex flex-col overflow-hidden">
 
@@ -173,14 +109,57 @@
 
   <div id="app" class="hidden fixed inset-0 z-50">
 
-    
-    <div id="hud" class="absolute inset-0 pointer-events-none">
-      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 pointer-events-auto">
-        <button id="btn-move" class="hud-btn">
-          <img src="/assets/icons/move.png" alt="Move" class="w-8 h-8" />
+    <div id="selected-unit-panel" class="hidden absolute left-4 top-1/2 -translate-y-1/2 
+         bg-bg-nav/90 rounded-xl p-4 flex flex-col items-center gap-3 w-36 pointer-events-none">
+      <p id="unit-name" class="text-white text-xs font-bold uppercase tracking-widest"></p>
+      <img id="unit-portrait" src="" alt="unit" class="w-20 h-20 object-contain rounded-lg bg-bg-card" />
+      <div class="w-full">
+        <div class="w-full bg-bg-panel rounded-full h-2 overflow-hidden">
+          <div id="unit-health-fill" class="h-2 rounded-full transition-all duration-300" style="width:100%;background:#3a9e7e"></div>
+        </div>
+        <p id="unit-health-text" class="text-white text-[10px] text-center mt-1">100 / 100</p>
+      </div>
+    </div>
+
+    <div id="intermission-bar" class="hidden absolute top-0 left-0 right-0 
+         bg-bg-nav/95 flex flex-col items-center py-2 gap-1 pointer-events-auto">
+      <div class="flex items-center gap-4 w-full max-w-lg px-4">
+        <p id="intermission-timer" class="text-white font-bold text-sm w-36">Intermission: 1:00</p>
+        <div class="flex-1 bg-bg-panel rounded-full h-2 overflow-hidden">
+          <div id="intermission-fill" class="h-2 rounded-full bg-accent-teal transition-all duration-200" style="width:100%"></div>
+        </div>
+        <button id="ready-btn"
+          class="bg-accent-teal hover:bg-accent-teal-hover text-white text-sm font-bold px-4 py-1 rounded-full transition-colors">
+          Ready
         </button>
-        <button id="btn-attack" class="hud-btn">
-          <img src="/assets/icons/attack.png" alt="Attack" class="w-8 h-8" />
+      </div>
+    </div>
+
+    <div id="intermission-panel" class="absolute bottom-6 left-1/2 -translate-x-1/2 
+         bg-bg-nav/90 rounded-xl px-6 py-4 flex flex-col items-center gap-3 pointer-events-auto">
+      <p class="text-white text-xs font-semibold uppercase tracking-widest">Select Troop to Place
+        <span id="troops-remaining" class="text-accent-teal ml-2">4 remaining</span>
+      </p>
+      <div class="flex gap-3">
+        <button data-troop="general"
+          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+          <img src="./assets/troops/general/0001.png" class="w-12 h-12 object-contain" alt="General" />
+          <p class="text-white text-[10px] text-center mt-1">General</p>
+        </button>
+        <button data-troop="grunt"
+          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+          <img src="./assets/troops/grunt/0001.png" class="w-12 h-12 object-contain" alt="Grunt" />
+          <p class="text-white text-[10px] text-center mt-1">Grunt</p>
+        </button>
+        <button data-troop="machineGunner"
+          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+          <img src="./assets/troops/machineGunner/0001.png" class="w-12 h-12 object-contain" alt="MG" />
+          <p class="text-white text-[10px] text-center mt-1">MG</p>
+        </button>
+        <button data-troop="tankDestroyer"
+          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+          <img src="./assets/troops/tankDestroyer/0001.png" class="w-12 h-12 object-contain" alt="Tank" />
+          <p class="text-white text-[10px] text-center mt-1">Tank</p>
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { initGame } from "../game/gameInit"
+import '../style.css';
 
 const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
 const contents = document.querySelectorAll<HTMLElement>('.tab-content');

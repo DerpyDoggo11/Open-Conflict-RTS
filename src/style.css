@@ -1,13 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-outer: #4a6080;
-  --color-bg-panel: #2d3f5a;
-  --color-bg-card:  #344761;
-  --color-nav:      #1e2d42;
-  --color-accent:   #3d9e7a;
-  --color-accent-h: #4db890;
-  --color-dim:      #8a9ab5;
-  --color-red:      #cc3333;
-  --color-green:    #3d9e7a;
+  --color-bg-outer:          #4f6490;
+  --color-bg-nav:            #2e3f5c;
+  --color-bg-card:           #374a6a;
+  --color-bg-panel:          #2e3f5c;
+  --color-accent-teal:       #3a9e7e;
+  --color-accent-teal-hover: #2d7d63;
+  --color-tab-active:        #ffffff;
+  --color-tab-inactive:      #b0bdd0;
+  --font-family-sans:        "Segoe UI", system-ui, sans-serif;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 4px;
+  background: #2e3f5c;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3a9e7e;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3a9e7e;
+  cursor: pointer;
+  border: 2px solid #fff;
+}
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: #ffffff;
+  border-radius: 2px 2px 0 0;
+  transition: left 0.25s ease, width 0.25s ease;
+}
+#app canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }

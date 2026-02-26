@@ -6,8 +6,11 @@ import { CharacterMovement } from './entityMovement';
 import { CharacterHUD } from '../ui/characterHUD';
 import troopDefs from '../data/troops.json';
 import { clearArrow, clearSelection } from './selectionUtils';
+import { troopInfoOverlay } from '../ui/troopInfoOverlay';
+
 
 export type TroopType = keyof typeof troopDefs;
+const unitPanel = new troopInfoOverlay();
 
 export async function spawnCharacter(
   type: TroopType,
@@ -56,11 +59,13 @@ export async function spawnCharacter(
   movement.open = () => {
     originalOpen();
     hud.attachTo(movement.sprite);
+    unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
   };
 
   movement.close = () => {
     originalClose();
     hud.hide();
+    unitPanel.hide();
   };
 
   app.ticker.add(() => hud.update(movement.sprite));

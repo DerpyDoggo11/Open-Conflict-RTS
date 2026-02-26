@@ -9,6 +9,8 @@ import {
 } from './entities/selectionUtils';
 import { DebugOverlay } from './ui/debugOverlay';
 
+import { Intermission } from './intermission';
+
 export async function initGame() {
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
@@ -40,12 +42,16 @@ export async function initGame() {
   viewport.addChild(hudContainer);
   createOceanMesh(app, viewport, mapData);
 
-  const spawnArgs = [mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures] as const;
+  //const spawnArgs = [mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures] as const;
 
-  await spawnCharacter('general', 10, -1, ...spawnArgs);
-  await spawnCharacter('grunt', 9, -1, ...spawnArgs);
-  await spawnCharacter('machineGunner', 8, -1, ...spawnArgs);
-  await spawnCharacter('tankDestroyer', 7, -1, ...spawnArgs);
+  new Intermission(
+    app, viewport, mapData,
+    tilesetTextures, characterContainer, hudContainer, objectsTilemap,
+    { x: 7, y: -3, w: 5, h: 3 },
+    () => {
+      console.log('Intermission over — game started!');
+    }
+  );
 
 
   viewport.pivot.set(0, 0);

@@ -4,27 +4,31 @@
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
-    "treeSwapRadius": 5
+    "treeSwapRadius": 5,
+    "maxHealth": 100
   },
   "grunt": {
     "spritePath": "./assets/troops/grunt/",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 3,
-    "treeSwapRadius": 5
+    "treeSwapRadius": 5,
+    "maxHealth": 80
   },
   "machineGunner": {
     "spritePath": "./assets/troops/machineGunner/",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
-    "treeSwapRadius": 5
+    "treeSwapRadius": 5,
+    "maxHealth": 80
   },
   "tankDestroyer": {
     "spritePath": "./assets/troops/tankDestroyer/",
     "scale": 1,
     "selectionRadius": 5,
     "attackRadius": 6,
-    "treeSwapRadius": 5
+    "treeSwapRadius": 5,
+    "maxHealth": 200
   }
 }
