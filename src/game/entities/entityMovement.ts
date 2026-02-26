@@ -8,10 +8,9 @@ import {
 } from './selectionUtils';
 
 export interface CharacterMovementOptions {
-  selectionGid?: number;
   selectionRadius?: number;
+  attackRadius?: number;
   treeSwapRadius?: number;
-  holdDurationMs?: number;
   spritePath?: string;
 }
 
@@ -28,11 +27,13 @@ export class CharacterMovement {
   private app: PIXI.Application;
 
   private selectionGid: number;
+  private attackGid: number;
   private selectionRadius: number;
+  private attackRadius: number;
   private treeSwapRadius: number;
   private spritePath: string;
 
-  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+  private selectionTileSprite: PIXI.Sprite | null = null;
 
   constructor(
     sprite: PIXI.Sprite,
@@ -53,11 +54,13 @@ export class CharacterMovement {
     this.objectsTilemap = objectsTilemap;
     this.tilesetTextures = tilesetTextures;
     this.mapData = mapData;
+    this.selectionGid = 6;
+    this.attackGid = 8;
 
-    this.selectionGid = options.selectionGid ?? 6;
     this.selectionRadius = options.selectionRadius ?? 2;
+    this.attackRadius = options.attackRadius ?? 3;
     this.treeSwapRadius = options.treeSwapRadius ?? 0;
-    this.spritePath = options.spritePath ?? "";
+    this.spritePath = options.spritePath ?? '';
 
     this.bindInputEvents();
   }
@@ -66,16 +69,11 @@ export class CharacterMovement {
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = this.app.screen;
     this.app.stage.on('pointerdown', this.onPointerDown, this);
-    this.app.stage.on('pointerup', this.onPointerUp, this);
   }
 
   public destroy(): void {
     this.app.stage.off('pointerdown', this.onPointerDown, this);
-    this.app.stage.off('pointerup', this.onPointerUp, this);
-    if (this.holdTimer !== null) {
-      clearTimeout(this.holdTimer);
-      this.holdTimer = null;
-    }
+    this.clearSelectionTile();
   }
 
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
@@ -83,85 +81,101 @@ export class CharacterMovement {
     const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
     const isCharTile = tileX === this.tileX && tileY === this.tileY;
 
-    if (isCharTile && !this.isSelected) {
-      this.holdTimer = setTimeout(() => {
-        this.open();
-        this.holdTimer = null;
-      }, 50);
-    }
-  };
-
-  private onPointerUp = (e: PIXI.FederatedPointerEvent): void => {
-    if (this.holdTimer !== null) {
-      clearTimeout(this.holdTimer);
-      this.holdTimer = null;
-      return;
-    }
-
-    if (this.isSelected) {
-      const worldPos = this.viewport.toLocal(e.global);
-      const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
-      const isCharTile = tileX === this.tileX && tileY === this.tileY;
-
-      if (isCharTile) {
+    if (isCharTile) {
+      if (this.isSelected) {
         this.close();
+      } else {
+        this.open();
       }
     }
   };
 
+  private clearSelectionTile(): void {
+    if (this.selectionTileSprite) {
+      this.selectionTileSprite.destroy();
+      this.selectionTileSprite = null;
+    }
+  }
+
   public open(): void {
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true
+    );
+    this.isSelected = true;
+  }
+
+  public openMove(): void {
+    clearSelection();
+    clearArrow();
     spawnSelectionRadius(
       this.tilesetTextures, this.tileX, this.tileY,
-      this.selectionRadius, this.selectionGid, this.mapData,
+      this.selectionRadius, this.selectionGid,
+      this.mapData,
+      (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
+      () => clearArrow(),
+      (tx, ty) => { this.moveTo(tx, ty); },
+    );
+  }
+
+  public openAttack(): void {
+    clearSelection();
+    clearArrow();
+    spawnSelectionRadius(
+      this.tilesetTextures, this.tileX, this.tileY,
+      this.attackRadius, this.attackGid,
+      this.mapData,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
       (tx, ty) => {
-        this.moveTo(tx, ty);
-        this.close();
-      }
+        console.log('attack tile:', tx, ty);
+        clearSelection();
+        clearArrow();
+      },
     );
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true);
-    this.isSelected = true;
   }
 
   public close(): void {
     clearSelection();
     clearArrow();
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, this.tileX, this.tileY, this.treeSwapRadius, this.mapData, false);
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, this.tileX, this.tileY, 3, this.mapData, true);
+    this.clearSelectionTile();
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, false
+    );
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      this.tileX, this.tileY, 3, this.mapData, true
+    );
     this.isSelected = false;
   }
 
-    private updateSpriteDirection(prevTileX: number, prevTileY: number): void {
-        const dx = this.tileX - prevTileX;
-        const dy = this.tileY - prevTileY;
+  private updateSpriteDirection(prevTileX: number, prevTileY: number): void {
+    const dx = this.tileX - prevTileX;
+    const dy = this.tileY - prevTileY;
 
-        const nx = dx === 0 ? 0 : dx / Math.abs(dx);
-        const ny = dy === 0 ? 0 : dy / Math.abs(dy);
+    const nx = dx === 0 ? 0 : dx / Math.abs(dx);
+    const ny = dy === 0 ? 0 : dy / Math.abs(dy);
 
-        console.log("nx" + nx);
-        console.log("ny" + ny);
+    const directionMap: Record<string, string> = {
+      '-1,-1': '0008', // NW
+      '-1,0':  '0001', // W
+      '-1,1':  '0002', // SW
+      '0,1':   '0003', // S
+      '1,1':   '0004', // SE
+      '1,0':   '0005', // E
+      '1,-1':  '0006', // NE
+      '0,-1':  '0007', // N
+    };
 
+    const key = `${nx},${ny}`;
+    const frame = directionMap[key];
+    if (!frame) return;
 
-        const directionMap: Record<string, string> = {
-            '-1,-1': '0008', // NW
-            '-1,0':  '0001', // W
-            '-1,1':  '0002', // SW
-            '0,1':   '0003', // S
-            '1,1':   '0004', // SE
-            '1,0':   '0005', // E
-            '1,-1':  '0006', // NE
-            '0,-1':  '0007', // N
-        };
-
-        const key = `${nx},${ny}`;
-        const frame = directionMap[key];
-        if (!frame) return;
-
-        PIXI.Assets.load(`${this.spritePath}${frame}.png`).then((texture: PIXI.Texture) => {
-          this.sprite.texture = texture;
-        });
-    }
+    PIXI.Assets.load(`${this.spritePath}${frame}.png`).then((texture: PIXI.Texture) => {
+      this.sprite.texture = texture;
+    });
+  }
 
   public moveTo(tileX: number, tileY: number): void {
     const prevTileX = this.tileX;
@@ -176,20 +190,18 @@ export class CharacterMovement {
 
     clearSelection();
     clearArrow();
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, prevTileX, prevTileY, this.treeSwapRadius, this.mapData, false);
-
-    spawnSelectionRadius(
-      this.tilesetTextures, this.tileX, this.tileY,
-      this.selectionRadius, this.selectionGid, this.mapData,
-      (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
-      () => clearArrow(),
-      (tx, ty) => {
-        this.moveTo(tx, ty);
-        this.close();
-      }
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      prevTileX, prevTileY, this.treeSwapRadius, this.mapData, false
     );
 
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true);
-    swapNearbyTrees(this.objectsTilemap, this.tilesetTextures, this.tileX, this.tileY, 2, this.mapData, true);
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true
+    );
+    swapNearbyTrees(
+      this.objectsTilemap, this.tilesetTextures,
+      this.tileX, this.tileY, 2, this.mapData, true
+    );
   }
 }

@@ -77,7 +77,7 @@ export function spawnSelectionRadius(
   centerX: number,
   centerY: number,
   radius: number,
-  selectionGid: number,
+  tileGid: number,
   mapData: TiledMap,
   onHover: (tileX: number, tileY: number) => void,
   onHoverOut: () => void,
@@ -93,8 +93,8 @@ export function spawnSelectionRadius(
       const tileY = centerY + dy;
       if (!isTileInWalkableBounds(tileX, tileY, mapData)) continue;
       if (tileX === centerX && tileY === centerY) continue;
-
-      const texture = tilesetTextures.get(selectionGid);
+      
+      const texture = tilesetTextures.get(tileGid);
       if (!texture) continue;
 
       const screenPos = tileToScreen(tileX, tileY, mapData);

@@ -9,6 +9,7 @@ import {
 } from './entities/selectionUtils';
 import { DebugOverlay } from './ui/debugOverlay';
 import { CharacterMovement } from './entities/entityMovement';
+import { CharacterHUD } from './ui/characterHUD';
 
 export async function initGame() {
   const app = new PIXI.Application();
@@ -29,6 +30,7 @@ export async function initGame() {
   objectsTilemap.label = 'Objects';
 
   const characterContainer = new PIXI.Container();
+  const hudContainer = new PIXI.Container();
   const selectionContainer = new PIXI.Container();
 
   viewport.addChild(groundTilemap);
@@ -37,86 +39,27 @@ export async function initGame() {
   initArrow(viewport);
   viewport.addChild(characterContainer);
   viewport.addChild(selectionContainer);
+  viewport.addChild(hudContainer);
   createOceanMesh(app, viewport, mapData);
 
-  const character = await spawnCharacter(
-    10, -1,
-    mapData,
-    characterContainer,
-    './assets/troops/general/0004.png'
-  );
-  character.scale.set(0.5, 0.5);
+  const spawnArgs = [mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures] as const;
 
-  const characterMovement = new CharacterMovement(
-    character, 10, -1,
-    app, viewport,
-    objectsTilemap, tilesetTextures, mapData,
-    {
-      selectionGid: 6,
-      selectionRadius: 2,
-      treeSwapRadius: 5,
-      spritePath: './assets/troops/general/',
-    }
-  );
-
-  const grunt = await spawnCharacter(
-    9, -1,
-    mapData,
-    characterContainer,
-    './assets/troops/grunt/0004.png'
-  );
-  grunt.scale.set(0.5, 0.5);
-
-  const gruntMovement = new CharacterMovement(
-    grunt, 9, -1,
-    app, viewport,
-    objectsTilemap, tilesetTextures, mapData,
-    {
-      selectionGid: 6,
-      selectionRadius: 2,
-      treeSwapRadius: 5,
-      spritePath: './assets/troops/grunt/',
-    }
-  );
-
-  const machineGunner = await spawnCharacter(
-    8, -1,
-    mapData,
-    characterContainer,
-    './assets/troops/machineGunner/0004.png'
-  );
-  machineGunner.scale.set(0.5, 0.5);
-
-  const machineGunnerMovement = new CharacterMovement(
-    machineGunner, 8, -1,
-    app, viewport,
-    objectsTilemap, tilesetTextures, mapData,
-    {
-      selectionGid: 6,
-      selectionRadius: 2,
-      treeSwapRadius: 5,
-      spritePath: './assets/troops/machineGunner/',
-    }
-  );
-
-  const tankDestroyer = await spawnCharacter(
-    7, -1,
-    mapData,
-    characterContainer,
-    './assets/troops/tankDestroyer/0004.png'
-  );
-
-  const tankDestroyerMovement = new CharacterMovement(
-    tankDestroyer, 7, -1,
-    app, viewport,
-    objectsTilemap, tilesetTextures, mapData,
-    {
-      selectionGid: 6,
-      selectionRadius: 5,
-      treeSwapRadius: 5,
-      spritePath: './assets/troops/tankDestroyer/',
-    }
-  );
+  await spawnCharacter(10, -1, ...spawnArgs, {
+    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
+    spritePath: './assets/troops/general/',
+  });
+  await spawnCharacter(9, -1, ...spawnArgs, {
+    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
+    spritePath: './assets/troops/grunt/',
+  });
+  await spawnCharacter(8, -1, ...spawnArgs, {
+    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
+    spritePath: './assets/troops/machineGunner/',
+  });
+  await spawnCharacter(7, -1, ...spawnArgs, {
+    scale: 1, selectionRadius: 5, treeSwapRadius: 5,
+    spritePath: './assets/troops/tankDestroyer/',
+  });
 
 
   viewport.pivot.set(0, 0);
