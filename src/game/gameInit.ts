@@ -8,8 +8,6 @@ import {
   initArrow, initSelection, spawnSelectionRadius, swapNearbyTrees
 } from './entities/selectionUtils';
 import { DebugOverlay } from './ui/debugOverlay';
-import { CharacterMovement } from './entities/entityMovement';
-import { CharacterHUD } from './ui/characterHUD';
 
 export async function initGame() {
   const app = new PIXI.Application();
@@ -44,22 +42,10 @@ export async function initGame() {
 
   const spawnArgs = [mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures] as const;
 
-  await spawnCharacter(10, -1, ...spawnArgs, {
-    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
-    spritePath: './assets/troops/general/',
-  });
-  await spawnCharacter(9, -1, ...spawnArgs, {
-    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
-    spritePath: './assets/troops/grunt/',
-  });
-  await spawnCharacter(8, -1, ...spawnArgs, {
-    scale: 0.5, selectionRadius: 2, treeSwapRadius: 5,
-    spritePath: './assets/troops/machineGunner/',
-  });
-  await spawnCharacter(7, -1, ...spawnArgs, {
-    scale: 1, selectionRadius: 5, treeSwapRadius: 5,
-    spritePath: './assets/troops/tankDestroyer/',
-  });
+  await spawnCharacter('general', 10, -1, ...spawnArgs);
+  await spawnCharacter('grunt', 9, -1, ...spawnArgs);
+  await spawnCharacter('machineGunner', 8, -1, ...spawnArgs);
+  await spawnCharacter('tankDestroyer', 7, -1, ...spawnArgs);
 
 
   viewport.pivot.set(0, 0);

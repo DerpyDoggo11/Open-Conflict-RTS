@@ -75,7 +75,6 @@ export class CharacterMovement {
     this.app.stage.off('pointerdown', this.onPointerDown, this);
     this.clearSelectionTile();
   }
-
   private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
     const worldPos = this.viewport.toLocal(e.global);
     const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
@@ -87,6 +86,8 @@ export class CharacterMovement {
       } else {
         this.open();
       }
+    } else if (this.isSelected) {
+      this.close();
     }
   };
 
