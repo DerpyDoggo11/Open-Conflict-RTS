@@ -8,10 +8,30 @@ import {
   initArrow, initSelection, spawnSelectionRadius, swapNearbyTrees
 } from './entities/selectionUtils';
 import { DebugOverlay } from './ui/debugOverlay';
-
 import { Intermission } from './intermission';
+import { colyseusClient, ColyseusClient } from './network/colyseusClient';
+import { gameChat } from './ui/gameChat';
 
 export async function initGame() {
+  
+  await colyseusClient.joinGame("Player"); 
+
+  const chat = new gameChat();
+  chat.show();
+
+  const toggle = document.getElementById("chat-toggle") as HTMLElement;
+  const closeBtn = document.getElementById("chat-close") as HTMLElement;
+
+  toggle.addEventListener("click", () => {
+    chat.show();
+    toggle.classList.add("hidden");
+  });
+  closeBtn.addEventListener("click", () => {
+    chat.hide();
+    toggle.classList.remove("hidden");
+  });
+
+
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
   await app.init({background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl'});
