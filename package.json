@@ -17,7 +17,6 @@
   "dependencies": {
     "@colyseus/sdk": "^0.17.34",
     "@pixi/tilemap": "^5.0.2",
-    "@colyseus/sdk": "^0.17.0",
     "pixi.js": "^8.16.0"
   }
 }

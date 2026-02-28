@@ -1,4 +1,5 @@
 import { initGame } from "../game/gameInit"
+import { colyseusClient } from "../game/network/colyseusClient";
 import '../style.css';
 
 const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
@@ -35,10 +36,24 @@ export async function startGame(): Promise<void> {
   const nav = document.querySelector('nav') as HTMLElement;
   const main = document.querySelector('main') as HTMLElement;
   const app = document.getElementById('app') as HTMLElement;
+  const waitingOverlay = document.getElementById('waiting-overlay') as HTMLElement;
+  const waitingCount = document.getElementById('waiting-count') as HTMLElement;
 
   nav.classList.add('hidden');
   main.classList.add('hidden');
   app.classList.remove('hidden');
+
+  colyseusClient.onPlayerCount((count, max) => {
+    waitingCount.textContent = `${count} / ${max} players connected`;
+    if (count >= max) {
+      waitingOverlay.classList.add('hidden');
+    } else {
+      waitingOverlay.classList.remove('hidden');
+    }
+  });
+
+  waitingOverlay.classList.remove('hidden');
+  waitingCount.textContent = `1 / 2 players connected`;
 
   await initGame();
 }
@@ -103,10 +118,42 @@ function createEmptySlot(): HTMLElement {
   return slot;
 }
 
+export async function leaveGame(): Promise<void> {
+  await colyseusClient.leave();
+  const nav = document.querySelector('nav') as HTMLElement;
+  const main = document.querySelector('main') as HTMLElement;
+  const app = document.getElementById('app') as HTMLElement;
+  nav.classList.remove('hidden');
+  main.classList.remove('hidden');
+  app.classList.add('hidden');
+}
+(window as any).leaveGame = leaveGame;
+
+// Poll server cards every 3 seconds:
+async function refreshServerCards(): Promise<void> {
+  const rooms = await colyseusClient.getRooms();
+  const cards = document.querySelectorAll<HTMLElement>('#tab-play .bg-bg-card');
+  cards.forEach((card, i) => {
+    const room = rooms[i];
+    const countEl = card.querySelector('p:nth-child(2)') as HTMLElement;
+    if (room) {
+      const full = room.clients >= room.maxClients;
+      countEl.textContent = `${room.clients}/${room.maxClients} players`;
+      countEl.className = `text-sm font-medium ${full ? 'text-red-400' : 'text-green-400'}`;
+    } else {
+      countEl.textContent = '0/2 players';
+      countEl.className = 'text-green-400 text-sm font-medium';
+    }
+  });
+}
+
+
 window.addEventListener('load', () => {
   setActiveTab('play');
   buildUnits();
   updateQualityButtons('high');
+  refreshServerCards();
+  setInterval(refreshServerCards, 3000);
 });
 
 window.addEventListener('resize', () => {
