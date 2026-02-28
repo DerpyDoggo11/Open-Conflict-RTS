@@ -1,5 +1,7 @@
 import { initGame } from "../game/gameInit"
 import { colyseusClient } from "../game/network/colyseusClient";
+import { initMainMenuBackground } from './mainMenuBackground';
+
 import '../style.css';
 
 const tabs = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
@@ -35,6 +37,7 @@ tabs.forEach(btn => {
 export async function startGame(): Promise<void> {
   const nav = document.querySelector('nav') as HTMLElement;
   const main = document.querySelector('main') as HTMLElement;
+  const background = document.querySelector('bg-canvas') as HTMLElement;
   const app = document.getElementById('app') as HTMLElement;
   const waitingOverlay = document.getElementById('waiting-overlay') as HTMLElement;
   const waitingCount = document.getElementById('waiting-count') as HTMLElement;
@@ -47,11 +50,13 @@ export async function startGame(): Promise<void> {
     waitingCount.textContent = `${count} / ${max} players connected`;
     if (count >= max) {
       waitingOverlay.classList.add('hidden');
+      background.classList.add('hidden');
     } else {
       waitingOverlay.classList.remove('hidden');
     }
   });
 
+  
   waitingOverlay.classList.remove('hidden');
   waitingCount.textContent = `1 / 2 players connected`;
 
@@ -152,6 +157,7 @@ window.addEventListener('load', () => {
   buildUnits();
   updateQualityButtons('high');
   refreshServerCards();
+  initMainMenuBackground();
   setInterval(refreshServerCards, 3000);
 });
 

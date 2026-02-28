@@ -9,104 +9,69 @@
 </head>
 <body class="bg-bg-outer min-h-screen flex flex-col overflow-hidden">
 
-  <nav class="bg-bg-nav relative flex items-center justify-center gap-10 px-8 py-4 shadow-lg">
-    <button
-      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
-      data-tab="play"
-    >Play</button>
-    <button
-      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
-      data-tab="loadouts"
-    >Loadouts</button>
-    <button
-      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
-      data-tab="settings"
-    >Settings</button>
+  <canvas id="bg-canvas" class="fixed inset-0 w-full h-full" style="z-index:0"></canvas>
+
+  <nav class="bg-bg-nav/60 backdrop-blur-sm relative z-10 flex items-center justify-center gap-10 px-8 py-4 shadow-lg">
+    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="play">Play</button>
+    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="loadouts">Loadouts</button>
+    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="settings">Settings</button>
     <div class="tab-indicator" id="tab-indicator"></div>
   </nav>
 
-  <main class="flex-1 flex items-start justify-center pt-12 px-6">
+  <main class="relative z-10 flex-1 flex items-start justify-center pt-12 px-6">
 
     <div id="tab-play" class="tab-content w-full max-w-xl flex flex-col gap-4">
-
-      <div class="bg-bg-card rounded-lg p-5 shadow-md flex flex-col gap-2">
+      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md flex flex-col gap-2 border border-white/10">
         <p class="text-white text-xl font-semibold">Server 1</p>
         <p class="text-green-400 text-sm font-medium">1/2 players</p>
         <div class="flex justify-end mt-2">
-          <button
-            class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow"
-            onclick="startGame()"
-          >Join</button>
+          <button class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow" onclick="startGame()">Join</button>
         </div>
       </div>
-
-      <div class="bg-bg-card rounded-lg p-5 shadow-md flex flex-col gap-2">
+      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md flex flex-col gap-2 border border-white/10">
         <p class="text-white text-xl font-semibold">Server 2</p>
         <p class="text-red-400 text-sm font-medium">2/2 players</p>
         <div class="flex justify-end mt-2">
-          <button
-            class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow"
-            onclick="startGame()"
-          >Join</button>
+          <button class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow" onclick="startGame()">Join</button>
         </div>
       </div>
-
     </div>
 
     <div id="tab-loadouts" class="tab-content hidden w-full max-w-xl flex flex-col gap-4">
-
-      <div class="bg-bg-card rounded-lg p-5 shadow-md">
+      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md border border-white/10">
         <p class="text-white text-base font-semibold mb-3">Available Units:</p>
-        <div id="available-units" class="flex flex-wrap gap-3 min-h-[80px]">
-        </div>
+        <div id="available-units" class="flex flex-wrap gap-3 min-h-[80px]"></div>
       </div>
-
-      <div class="bg-bg-card rounded-lg p-5 shadow-md">
+      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md border border-white/10">
         <p class="text-white text-base font-semibold mb-3">Selected Units</p>
-        <div id="selected-units" class="flex flex-wrap gap-3 min-h-[80px]">
-        </div>
+        <div id="selected-units" class="flex flex-wrap gap-3 min-h-[80px]"></div>
       </div>
-
     </div>
 
     <div id="tab-settings" class="tab-content hidden w-full max-w-xl">
-      <div class="bg-bg-card rounded-lg p-6 shadow-md flex flex-col gap-5">
+      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-6 shadow-md flex flex-col gap-5 border border-white/10">
         <div class="flex items-center gap-4">
           <label class="text-white text-base font-semibold w-36">Volume:</label>
           <div class="flex-1 flex items-center gap-3">
-            <input
-              type="range" min="0" max="100" value="60"
-              class="w-48"
-              id="volume-slider"
+            <input type="range" min="0" max="100" value="60" class="w-48" id="volume-slider"
               style="background: linear-gradient(to right, #3a9e7e 60%, #2e3f5c 60%);"
-              oninput="updateVolume(this)"
-            />
+              oninput="updateVolume(this)" />
           </div>
         </div>
-
         <div class="flex items-center gap-4">
           <label class="text-white text-base font-semibold w-36">Graphics Quality:</label>
           <div class="flex gap-2" id="quality-btns">
-            <button
-              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200"
-              data-quality="low"
-            >Low</button>
-            <button
-              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200"
-              data-quality="medium"
-            >Medium</button>
-            <button
-              class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 active-quality"
-              data-quality="high"
-            >High</button>
+            <button class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200" data-quality="low">Low</button>
+            <button class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200" data-quality="medium">Medium</button>
+            <button class="quality-btn px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 active-quality" data-quality="high">High</button>
           </div>
         </div>
-
       </div>
     </div>
 
   </main>
-    <div id="app" class="hidden fixed inset-0 z-50 flex">
+
+  <div id="app" class="hidden fixed inset-0 z-50 flex">
     <div id="selected-unit-panel" class="hidden absolute left-4 top-1/2 -translate-y-1/2 
         bg-bg-nav/90 rounded-xl p-4 flex flex-col items-center gap-3 w-36 pointer-events-none">
       <p id="unit-name" class="text-white text-xs font-bold uppercase tracking-widest"></p>
@@ -126,10 +91,7 @@
         <div class="flex-1 bg-bg-panel rounded-full h-2 overflow-hidden">
           <div id="intermission-fill" class="h-2 rounded-full bg-accent-teal transition-all duration-200" style="width:100%"></div>
         </div>
-        <button id="ready-btn"
-          class="bg-accent-teal hover:bg-accent-teal-hover text-white text-sm font-bold px-4 py-1 rounded-full transition-colors">
-          Ready
-        </button>
+        <button id="ready-btn" class="bg-accent-teal hover:bg-accent-teal-hover text-white text-sm font-bold px-4 py-1 rounded-full transition-colors">Ready</button>
       </div>
     </div>
 
@@ -139,23 +101,19 @@
         <span id="troops-remaining" class="text-accent-teal ml-2">4 remaining</span>
       </p>
       <div class="flex gap-3">
-        <button data-troop="general"
-          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+        <button data-troop="general" class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
           <img src="./assets/troops/general/0001.png" class="w-12 h-12 object-contain" alt="General" />
           <p class="text-white text-[10px] text-center mt-1">General</p>
         </button>
-        <button data-troop="grunt"
-          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+        <button data-troop="grunt" class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
           <img src="./assets/troops/grunt/0001.png" class="w-12 h-12 object-contain" alt="Grunt" />
           <p class="text-white text-[10px] text-center mt-1">Grunt</p>
         </button>
-        <button data-troop="machineGunner"
-          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+        <button data-troop="machineGunner" class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
           <img src="./assets/troops/machineGunner/0001.png" class="w-12 h-12 object-contain" alt="MG" />
           <p class="text-white text-[10px] text-center mt-1">MG</p>
         </button>
-        <button data-troop="tankDestroyer"
-          class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
+        <button data-troop="tankDestroyer" class="bg-bg-card hover:bg-bg-panel rounded-lg p-2 border border-white/10 transition-all">
           <img src="./assets/troops/tankDestroyer/0001.png" class="w-12 h-12 object-contain" alt="Tank" />
           <p class="text-white text-[10px] text-center mt-1">Tank</p>
         </button>
@@ -175,50 +133,38 @@
       </div>
     </div>
 
-    <div id="game-timer-bar" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-bg-nav/95 rounded-2xl px-5 py-2 flex items-center gap-4 pointer-events-none shadow-lg border border-white/10" style="min-width: 320px;">
+    <div id="game-timer-bar" class="hidden absolute top-3 left-1/2 -translate-x-1/2
+        bg-bg-nav/95 rounded-2xl px-5 py-2 flex items-center gap-4 pointer-events-none shadow-lg border border-white/10"
+        style="min-width: 320px;">
       <p id="game-timer-label" class="text-white font-bold text-sm whitespace-nowrap">Time Remaining: 5:00</p>
       <div class="flex-1 bg-bg-panel rounded-full h-2 overflow-hidden">
         <div id="game-timer-fill" class="h-2 rounded-full bg-accent-teal transition-all duration-200" style="width:100%"></div>
       </div>
     </div>
 
-    <button id="chat-toggle"
-      class="absolute right-4 bottom-6 bg-bg-nav text-white px-3 py-2 rounded-lg 
-            border border-white/10 text-sm font-semibold pointer-events-auto 
-            hover:bg-bg-card transition-colors">
+    <button id="chat-toggle" class="absolute right-4 bottom-6 bg-bg-nav text-white px-3 py-2 rounded-lg 
+          border border-white/10 text-sm font-semibold pointer-events-auto hover:bg-bg-card transition-colors">
       💬 Chat
     </button>
 
-
-    <div id="chat-panel"
-  class="hidden absolute right-0 top-0 bottom-0 w-70 min-w-[16rem] bg-bg-nav/95 flex-col border-l border-white/10 pointer-events-auto">
+    <div id="chat-panel" class="hidden absolute right-0 top-0 bottom-0 w-70 min-w-[16rem] bg-bg-nav/95 flex-col border-l border-white/10 pointer-events-auto">
       <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <p class="text-white font-semibold text-sm">Chat</p>
         <button id="chat-close" class="text-tab-inactive hover:text-white text-lg leading-none">×</button>
       </div>
-      <div id="chat-messages"
-        class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
-      </div>
+      <div id="chat-messages" class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2"></div>
       <div class="px-3 py-3 border-t border-white/10 flex gap-2">
-        <input
-          id="chat-input"
-          type="text"
-          maxlength="200"
-          placeholder="Say something..."
+        <input id="chat-input" type="text" maxlength="200" placeholder="Say something..."
           class="flex-1 bg-bg-card text-white text-sm rounded-lg px-3 py-1.5 
                 outline-none border border-white/10 focus:border-accent-teal
-                placeholder:text-tab-inactive transition-colors"
-        />
-        <button id="chat-send"
-          class="bg-accent-teal hover:bg-accent-teal-hover text-white text-sm 
-                font-semibold px-3 py-1.5 rounded-lg transition-colors">↑
-        </button>
+                placeholder:text-tab-inactive transition-colors" />
+        <button id="chat-send" class="bg-accent-teal hover:bg-accent-teal-hover text-white text-sm 
+              font-semibold px-3 py-1.5 rounded-lg transition-colors">↑</button>
       </div>
     </div>
-
   </div>
-    
 
   <script type="module" src="/src/mainMenu/mainMenu.ts"></script>
+  <script type="module" src="/src/mainMenu/mainMenuBackground.ts"></script>
 </body>
 </html>
