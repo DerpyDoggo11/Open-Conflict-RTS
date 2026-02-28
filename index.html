@@ -175,6 +175,13 @@
       </div>
     </div>
 
+    <div id="game-timer-bar" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-bg-nav/95 rounded-2xl px-5 py-2 flex items-center gap-4 pointer-events-none shadow-lg border border-white/10" style="min-width: 320px;">
+      <p id="game-timer-label" class="text-white font-bold text-sm whitespace-nowrap">Time Remaining: 5:00</p>
+      <div class="flex-1 bg-bg-panel rounded-full h-2 overflow-hidden">
+        <div id="game-timer-fill" class="h-2 rounded-full bg-accent-teal transition-all duration-200" style="width:100%"></div>
+      </div>
+    </div>
+
     <button id="chat-toggle"
       class="absolute right-4 bottom-6 bg-bg-nav text-white px-3 py-2 rounded-lg 
             border border-white/10 text-sm font-semibold pointer-events-auto 

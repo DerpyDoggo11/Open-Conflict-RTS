@@ -3,8 +3,9 @@ import { type TiledMap } from './types/tilemapTypes';
 import { tileToScreen, screenToTile, isTileInWalkableBounds } from './tilemap/tilemapUtils';
 import { spawnCharacter, type TroopType } from './entities/entityUtils';
 import { CompositeTilemap } from '@pixi/tilemap';
-import { intermissionOverlay } from './ui/intermissionOverlay';
+import { IntermissionOverlay } from './ui/intermissionOverlay';
 import troopDefs from './data/troops.json';
+import { colyseusClient } from './network/colyseusClient';
 
 const SPAWN_GID = 5;
 const INTERMISSION_DURATION_MS = 60_000;
@@ -15,7 +16,7 @@ export class Intermission {
   private selectedTroopType: TroopType | null = null;
   private placedCount: number = 0;
   private readonly maxTroops = 4;
-  private ui: intermissionOverlay;
+  private ui: IntermissionOverlay;
   private onComplete: () => void;
 
   constructor(
@@ -37,7 +38,11 @@ export class Intermission {
     this.bindSpawnClick();
     this.updateTroopSelector(null);
 
-    this.ui = new intermissionOverlay(INTERMISSION_DURATION_MS, () => this.complete());
+    this.ui = new IntermissionOverlay(() => this.complete());
+
+    colyseusClient.onTick(({ timeRemaining, intermissionDuration, gameDuration }) => {
+      this.ui.tick(timeRemaining, intermissionDuration, gameDuration);
+    });
   }
 
   private spawnBlueZone(): void {

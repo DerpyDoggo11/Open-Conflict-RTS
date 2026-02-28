@@ -129,7 +129,6 @@ export async function leaveGame(): Promise<void> {
 }
 (window as any).leaveGame = leaveGame;
 
-// Poll server cards every 3 seconds:
 async function refreshServerCards(): Promise<void> {
   const rooms = await colyseusClient.getRooms();
   const cards = document.querySelectorAll<HTMLElement>('#tab-play .bg-bg-card');

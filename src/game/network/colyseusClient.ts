@@ -7,11 +7,19 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface TickMessage {
+  timeRemaining: number;
+  intermissionDuration: number;
+  gameDuration: number;
+}
+
 export class ColyseusClient {
   private client: Client;
   private room: Room | null = null;
   private chatListeners: ((msg: ChatMessage) => void)[] = [];
   private playerCountListeners: ((count: number, max: number) => void)[] = [];
+  private tickListeners: ((tick: TickMessage) => void)[] = [];
+  private gameStartListeners: (() => void)[] = [];
 
   constructor() {
     this.client = new Client("ws://localhost:2567");
@@ -20,7 +28,6 @@ export class ColyseusClient {
   async joinGame(playerName: string): Promise<void> {
     try {
       this.room = await this.client.joinOrCreate("game_room", { name: playerName });
-      console.log("Joined room:", this.room.sessionId);
 
       this.room.onMessage("chat", (msg: ChatMessage) => {
         this.chatListeners.forEach(fn => fn(msg));
@@ -30,10 +37,26 @@ export class ColyseusClient {
         this.playerCountListeners.forEach(fn => fn(msg.count, msg.max));
       });
 
+      this.room.onMessage("gameTick", (msg: TickMessage) => {
+        this.tickListeners.forEach(fn => fn(msg));
+      });
+
+      this.room.onMessage("gameStart", () => {
+        this.gameStartListeners.forEach(fn => fn());
+      });
+
     } catch (e) {
       console.error("Failed to join:", e);
       throw e;
     }
+  }
+
+  onTick(fn: (tick: TickMessage) => void): void {
+    this.tickListeners.push(fn);
+  }
+
+  onGameStart(fn: () => void): void {
+    this.gameStartListeners.push(fn);
   }
 
   async getRooms(): Promise<{ roomId: string; clients: number; maxClients: number }[]> {

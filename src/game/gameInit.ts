@@ -11,6 +11,7 @@ import { DebugOverlay } from './ui/debugOverlay';
 import { Intermission } from './intermission';
 import { colyseusClient, ColyseusClient } from './network/colyseusClient';
 import { gameChat } from './ui/gameChat';
+import { tickGameTimer } from './ui/gameTimer';
 
 export async function initGame() {
   
@@ -73,6 +74,9 @@ export async function initGame() {
     }
   );
 
+  colyseusClient.onTick(({ timeRemaining, intermissionDuration, gameDuration }) => {
+    tickGameTimer(timeRemaining, intermissionDuration, gameDuration);
+  });
 
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
