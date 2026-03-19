@@ -9,7 +9,18 @@
   --color-accent-teal-hover: #2d7d63;
   --color-tab-active:        #ffffff;
   --color-tab-inactive:      #b0bdd0;
-  --font-family-sans:        "Segoe UI", system-ui, sans-serif;
+  --font-family-sans: "pixelFont", "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-family-sans);
+}
+
+@font-face {
+  font-family: "pixelFont";
+  src: url("/assets/fonts/pixelFont.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
 }
 
 input[type="range"] {
@@ -52,4 +63,29 @@ input[type="range"]::-moz-range-thumb {
   display: block;
   width: 100% !important;
   height: 100% !important;
+}
+
+
+.server-card {
+  background-image: url('/assets/ui/menuButtonBG.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  background-color: transparent;
+}
+
+.btn-sprite-play {
+  display: inline-block;
+  width: 128px; 
+  height: 64px;
+  aspect-ratio: 4 / 1;
+  background-image: url('/assets/ui/playButton.png');
+  background-repeat: no-repeat;
+  background-position: 0px 0px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  image-rendering: pixelated; 
+
+  transition: background-position 0s;
 }

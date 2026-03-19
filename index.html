@@ -9,47 +9,57 @@
 </head>
 <body class="bg-bg-outer min-h-screen flex flex-col overflow-hidden">
 
-  <canvas id="bg-canvas" class="fixed inset-0 w-full h-full" style="z-index:0"></canvas>
-
-  <nav class="bg-bg-nav/60 backdrop-blur-sm relative z-10 flex items-center justify-center gap-10 px-8 py-4 shadow-lg">
-    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="play">Play</button>
-    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="loadouts">Loadouts</button>
-    <button class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200" data-tab="settings">Settings</button>
+  <nav class="bg-bg-nav relative flex items-center justify-center gap-10 px-8 py-4">
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="play"
+    >Play</button>
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="loadouts"
+    >Loadouts</button>
+    <button
+      class="tab-btn relative px-4 py-1 text-lg font-semibold transition-colors duration-200"
+      data-tab="settings"
+    >Settings</button>
     <div class="tab-indicator" id="tab-indicator"></div>
   </nav>
 
   <main class="relative z-10 flex-1 flex items-start justify-center pt-12 px-6">
 
-    <div id="tab-play" class="tab-content w-full max-w-xl flex flex-col gap-4">
-      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md flex flex-col gap-2 border border-white/10">
-        <p class="text-white text-xl font-semibold">Server 1</p>
-        <p class="text-green-400 text-sm font-medium">1/2 players</p>
-        <div class="flex justify-end mt-2">
-          <button class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow" onclick="startGame()">Join</button>
+    <div id="tab-play" class="tab-content w-full max-w-xl flex flex-col gap-4 items-center">
+      <div class="server-card inline-flex items-center gap-6 px-4 py-2">
+        <div>
+          <p class="text-white text-sm font-semibold">Server 1</p>
+          <p class="text-green-400 text-xs">1/2 players</p>
         </div>
+        <button class="btn-sprite-play" onclick="startGame()" aria-label="Play"></button>
       </div>
-      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md flex flex-col gap-2 border border-white/10">
-        <p class="text-white text-xl font-semibold">Server 2</p>
-        <p class="text-red-400 text-sm font-medium">2/2 players</p>
-        <div class="flex justify-end mt-2">
-          <button class="bg-accent-teal hover:bg-accent-teal-hover text-white font-semibold px-8 py-2 rounded-full transition-colors duration-200 shadow" onclick="startGame()">Join</button>
+
+      <div class="server-card inline-flex items-center gap-6 px-4 py-2">
+        <div>
+          <p class="text-white text-sm font-semibold">Server 2</p>
+          <p class="text-green-400 text-xs">0/2 players</p>
         </div>
+        <button class="btn-sprite-play" onclick="startGame()" aria-label="Play"></button>
       </div>
     </div>
 
     <div id="tab-loadouts" class="tab-content hidden w-full max-w-xl flex flex-col gap-4">
-      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md border border-white/10">
+
+      <div class="bg-bg-card rounded-lg p-5">
         <p class="text-white text-base font-semibold mb-3">Available Units:</p>
         <div id="available-units" class="flex flex-wrap gap-3 min-h-[80px]"></div>
       </div>
-      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-5 shadow-md border border-white/10">
+
+      <div class="bg-bg-card rounded-lg p-5">
         <p class="text-white text-base font-semibold mb-3">Selected Units</p>
         <div id="selected-units" class="flex flex-wrap gap-3 min-h-[80px]"></div>
       </div>
     </div>
 
     <div id="tab-settings" class="tab-content hidden w-full max-w-xl">
-      <div class="bg-bg-card/60 backdrop-blur-sm rounded-lg p-6 shadow-md flex flex-col gap-5 border border-white/10">
+      <div class="bg-bg-card rounded-lg p-6 flex flex-col gap-5">
         <div class="flex items-center gap-4">
           <label class="text-white text-base font-semibold w-36">Volume:</label>
           <div class="flex-1 flex items-center gap-3">
@@ -121,7 +131,7 @@
     </div>
 
     <div id="waiting-overlay" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-6 bg-bg-outer/80 pointer-events-auto">
-      <div class="bg-bg-nav rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
+      <div class="bg-bg-nav rounded-2xl px-10 py-8 flex flex-col items-center gap-4">
         <p class="text-white text-xl font-bold">Waiting for Players</p>
         <p id="waiting-count" class="text-accent-teal text-sm font-semibold">1 / 2 players connected</p>
         <div class="flex gap-2 mt-2">
@@ -133,9 +143,7 @@
       </div>
     </div>
 
-    <div id="game-timer-bar" class="hidden absolute top-3 left-1/2 -translate-x-1/2
-        bg-bg-nav/95 rounded-2xl px-5 py-2 flex items-center gap-4 pointer-events-none shadow-lg border border-white/10"
-        style="min-width: 320px;">
+    <div id="game-timer-bar" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-bg-nav/95 rounded-2xl px-5 py-2 flex items-center gap-4 pointer-events-none border border-white/10" style="min-width: 320px;">
       <p id="game-timer-label" class="text-white font-bold text-sm whitespace-nowrap">Time Remaining: 5:00</p>
       <div class="flex-1 bg-bg-panel rounded-full h-2 overflow-hidden">
         <div id="game-timer-fill" class="h-2 rounded-full bg-accent-teal transition-all duration-200" style="width:100%"></div>

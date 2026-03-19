@@ -6,9 +6,11 @@ import { CompositeTilemap } from '@pixi/tilemap';
 import { IntermissionOverlay } from './ui/intermissionOverlay';
 import troopDefs from './data/troops.json';
 import { colyseusClient } from './network/colyseusClient';
+import type { CharacterMovement } from './entities/entityMovement';
 
 const SPAWN_GID = 5;
 const INTERMISSION_DURATION_MS = 60_000;
+export const troopRegistry = new Map<string, CharacterMovement>();
 
 export class Intermission {
   private spawnZoneSprites: PIXI.Sprite[] = [];
@@ -97,7 +99,7 @@ export class Intermission {
     if (!this.selectedTroopType) return;
     if (this.placedCount >= this.maxTroops) return;
 
-    await spawnCharacter(
+    const troop = await spawnCharacter(
       this.selectedTroopType, tileX, tileY,
       this.mapData, this.characterContainer, this.hudContainer,
       this.app, this.viewport, this.objectsTilemap, this.tilesetTextures,

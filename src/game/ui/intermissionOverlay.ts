@@ -24,7 +24,7 @@ export class IntermissionOverlay {
     this.timerLabel.textContent = `Intermission: ${mins}:${s}`;
     this.pctFill.style.width = ((intermisisonTimeRemaining / intermissionDuration) * 100) + '%';
 
-    if (intermisisonTimeRemaining <= 0) {
+    if (intermisisonTimeRemaining == 0) {
       this.triggerReady();
     }
   }

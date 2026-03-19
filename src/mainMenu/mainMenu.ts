@@ -151,6 +151,43 @@ async function refreshServerCards(): Promise<void> {
   });
 }
 
+function initPlayButtonSprite() {
+  const btn = document.querySelector<HTMLElement>('.btn-sprite-play');
+  if (!btn) return;
+
+  const FRAME_W = 128; 
+  const FRAME_COUNT = 4;
+  const FRAME_DURATION = 40;
+
+  let currentFrame = 0;
+  let interval: ReturnType<typeof setInterval> | null = null;
+  let direction: 1 | -1 = 1;
+
+  function goToFrame(f: number) {
+    currentFrame = f;
+    btn!.style.backgroundPosition = `${-f * FRAME_W}px 0px`;
+  }
+
+  function startAnim(dir: 1 | -1) {
+    if (interval) clearInterval(interval);
+    direction = dir;
+    interval = setInterval(() => {
+      const next = currentFrame + direction;
+      if (next < 0 || next >= FRAME_COUNT) {
+        clearInterval(interval!);
+        interval = null;
+        return;
+      }
+      goToFrame(next);
+    }, FRAME_DURATION);
+  }
+
+  btn.addEventListener('mouseenter', () => startAnim(1));
+  btn.addEventListener('mouseleave', () => startAnim(-1));
+}
+
+initPlayButtonSprite();
+
 
 window.addEventListener('load', () => {
   setActiveTab('play');

@@ -7,10 +7,57 @@ import { CharacterHUD } from '../ui/characterHUD';
 import troopDefs from '../data/troops.json';
 import { clearArrow, clearSelection } from './selectionUtils';
 import { troopInfoOverlay } from '../ui/troopInfoOverlay';
-
+import { colyseusClient } from '../network/colyseusClient';
 
 export type TroopType = keyof typeof troopDefs;
+
 const unitPanel = new troopInfoOverlay();
+
+// Registry lives here — scoped to this module
+const troopRegistry = new Map<string, CharacterMovement>();
+
+// Call once after joining to wire up opponent sync
+export function initTroopSync(
+  mapData: TiledMap,
+  characterContainer: PIXI.Container,
+  hudContainer: PIXI.Container,
+  app: PIXI.Application,
+  viewport: PIXI.Container,
+  objectsTilemap: CompositeTilemap,
+  tilesetTextures: Map<number, PIXI.Texture>,
+): void {
+
+  colyseusClient.onTroopSpawn(async (msg) => {
+    console.log("spawn received:", msg.id, "owner:", msg.ownerId, "me:", colyseusClient.sessionId);
+    
+    if (msg.ownerId === colyseusClient.sessionId) {
+      console.log("skipping own troop");
+      return;
+    }
+
+    const movement = await spawnCharacter(
+      msg.type as TroopType,
+      msg.tileX, msg.tileY,
+      mapData, characterContainer, hudContainer,
+      app, viewport, objectsTilemap, tilesetTextures,
+      false,
+    );
+    troopRegistry.set(msg.id, movement);
+  });
+
+  colyseusClient.onTroopMove((msg) => {
+    const m = troopRegistry.get(msg.id);
+    if (m) m.moveTo(msg.tileX, msg.tileY);
+  });
+
+  colyseusClient.onTroopDied((id) => {
+    const m = troopRegistry.get(id);
+    if (m) {
+      m.destroy();
+      troopRegistry.delete(id);
+    }
+  });
+}
 
 export async function spawnCharacter(
   type: TroopType,
@@ -23,9 +70,9 @@ export async function spawnCharacter(
   viewport: PIXI.Container,
   objectsTilemap: CompositeTilemap,
   tilesetTextures: Map<number, PIXI.Texture>,
+  isLocal: boolean = true, // false for opponent troops
 ): Promise<CharacterMovement> {
   const def = troopDefs[type];
-
   const texture = await PIXI.Assets.load(def.spritePath + '0004.png');
   const sprite = new PIXI.Sprite(texture);
   const screenPos = tileToScreen(tileX, tileY, mapData);
@@ -46,29 +93,45 @@ export async function spawnCharacter(
     },
   );
 
-  const hud = new CharacterHUD(hudContainer, (action) => {
-    clearSelection();
-    clearArrow();
-    if (action === 'move')   movement.openMove();
-    if (action === 'attack') movement.openAttack();
-  });
+  const troopId = `${colyseusClient.sessionId}_${type}_${tileX}_${tileY}_${Date.now()}`;
 
-  const originalOpen  = movement.open.bind(movement);
-  const originalClose = movement.close.bind(movement);
+  if (isLocal) {
+    troopRegistry.set(troopId, movement);
 
-  movement.open = () => {
-    originalOpen();
-    hud.attachTo(movement.sprite);
-    unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
-  };
+    colyseusClient.spawnTroop(troopId, type, tileX, tileY, def.maxHealth);
 
-  movement.close = () => {
-    originalClose();
-    hud.hide();
-    unitPanel.hide();
-  };
+    const originalMoveTo = movement.moveTo.bind(movement);
+    movement.moveTo = (tx: number, ty: number) => {
+      originalMoveTo(tx, ty);
+      colyseusClient.moveTroop(troopId, tx, ty);
+    };
+  }
 
-  app.ticker.add(() => hud.update(movement.sprite));
+  if (isLocal) {
+    const hud = new CharacterHUD(hudContainer, (action) => {
+      clearSelection();
+      clearArrow();
+      if (action === 'move')   movement.openMove();
+      if (action === 'attack') movement.openAttack();
+    });
+
+    const originalOpen  = movement.open.bind(movement);
+    const originalClose = movement.close.bind(movement);
+
+    movement.open = () => {
+      originalOpen();
+      hud.attachTo(movement.sprite);
+      unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
+    };
+
+    movement.close = () => {
+      originalClose();
+      hud.hide();
+      unitPanel.hide();
+    };
+
+    app.ticker.add(() => hud.update(movement.sprite));
+  }
 
   return movement;
 }

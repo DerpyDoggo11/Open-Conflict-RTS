@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { loadTiledMap } from './tilemap/tilemapLoader';
 import { createOceanMesh } from './tilemap/oceanBackground';
-import { spawnCharacter } from './entities/entityUtils';
+import { initTroopSync, spawnCharacter } from './entities/entityUtils';
 import { setupCamera } from './entities/camera';
 import {
   clearArrow, clearSelection, closeSelection, drawArrowToTile,
@@ -9,20 +9,15 @@ import {
 } from './entities/selectionUtils';
 import { DebugOverlay } from './ui/debugOverlay';
 import { Intermission } from './intermission';
-import { colyseusClient, ColyseusClient } from './network/colyseusClient';
+import { colyseusClient } from './network/colyseusClient';
 import { gameChat } from './ui/gameChat';
 import { tickGameTimer } from './ui/gameTimer';
 
 export async function initGame() {
-  
-  await colyseusClient.joinGame("Player"); 
-
   const chat = new gameChat();
   chat.show();
-
   const toggle = document.getElementById("chat-toggle") as HTMLElement;
   const closeBtn = document.getElementById("chat-close") as HTMLElement;
-
   toggle.addEventListener("click", () => {
     chat.show();
     toggle.classList.add("hidden");
@@ -32,10 +27,9 @@ export async function initGame() {
     toggle.classList.remove("hidden");
   });
 
-
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
-  await app.init({background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl'});
+  await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
   appContainer.appendChild(app.canvas);
 
   const viewport = new PIXI.Container();
@@ -61,9 +55,14 @@ export async function initGame() {
   viewport.addChild(characterContainer);
   viewport.addChild(selectionContainer);
   viewport.addChild(hudContainer);
+
   createOceanMesh(app, viewport, mapData);
 
-  //const spawnArgs = [mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures] as const;
+  // Register opponent sync listeners BEFORE joining so we don't miss the initial state
+  initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
+
+  // Join the server AFTER everything is set up
+  await colyseusClient.joinGame("Player");
 
   new Intermission(
     app, viewport, mapData,
@@ -81,7 +80,5 @@ export async function initGame() {
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
   viewport.scale.set(0.5, 0.5);
-
   setupCamera(app, viewport);
 }
-
