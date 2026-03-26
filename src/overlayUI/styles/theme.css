@@ -1,0 +1,45 @@
+@font-face {
+    font-family: 'pixelFont';
+    src: url("/assets/fonts/pixelFont.otf") format("opentype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --color-bg: #202E37;
+    --color-bg-panel: #1c2931;
+    --color-border: #7a9898;
+    --color-border-dim:#4a6868;
+    --color-text-primary: #c8d8c0;
+    --color-text-secondary: #7a9898;
+    --color-text-title: #d8e8d0;
+    --color-text-error: #cc4444;
+
+    --font-game: 'pixelFont', 'Courier New', monospace;
+    --font-size-xs: clamp(0.6rem,  1vw, 0.75rem);
+    --font-size-sm: clamp(0.7rem,  1.2vw, 0.875rem);
+    --font-size-md: clamp(0.85rem, 1.5vw, 1.25rem);
+    --font-size-lg: clamp(1rem,    2vw, 1.75rem);
+    --font-size-xl: clamp(1.2rem,  2.5vw, 1.5rem);
+    --font-size-logo: clamp(1.2rem,  2.5vw, 2rem);
+    
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+    
+    --bracket-weight: 1px;
+    
+    --timer-bar-height: 3px;
+    --timer-banner-path: url('/assets/ui/timerBanner.png');
+    --timer-banner-width: 0px;
+
+    --animated-button-path: url('/assets/ui/playButton.png');
+    --animated-button-width: 160px;
+    --animated-button-height: 45px;
+
+    --transition-fast:   80ms ease;
+    --transition-normal: 140ms ease;
+}
