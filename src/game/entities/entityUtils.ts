@@ -3,15 +3,13 @@ import { CompositeTilemap } from '@pixi/tilemap';
 import { type TiledMap } from '../types/tilemapTypes';
 import { tileToScreen } from '../tilemap/tilemapUtils';
 import { CharacterMovement } from './entityMovement';
-import { CharacterHUD } from '../ui/characterHUD';
 import troopDefs from '../data/troops.json';
 import { clearArrow, clearSelection } from './selectionUtils';
-import { troopInfoOverlay } from '../ui/troopInfoOverlay';
 import { colyseusClient } from '../network/colyseusClient';
 
 export type TroopType = keyof typeof troopDefs;
 
-const unitPanel = new troopInfoOverlay();
+// const unitPanel = new troopInfoOverlay();
 
 // Registry lives here — scoped to this module
 const troopRegistry = new Map<string, CharacterMovement>();
@@ -70,7 +68,7 @@ export async function spawnCharacter(
   viewport: PIXI.Container,
   objectsTilemap: CompositeTilemap,
   tilesetTextures: Map<number, PIXI.Texture>,
-  isLocal: boolean = true, // false for opponent troops
+  isLocal: boolean = true,
 ): Promise<CharacterMovement> {
   const def = troopDefs[type];
   const texture = await PIXI.Assets.load(def.spritePath + '0004.png');
@@ -107,31 +105,31 @@ export async function spawnCharacter(
     };
   }
 
-  if (isLocal) {
-    const hud = new CharacterHUD(hudContainer, (action) => {
-      clearSelection();
-      clearArrow();
-      if (action === 'move')   movement.openMove();
-      if (action === 'attack') movement.openAttack();
-    });
+  // if (isLocal) {
+  //   const hud = new CharacterHUD(hudContainer, (action) => {
+  //     clearSelection();
+  //     clearArrow();
+  //     if (action === 'move')   movement.openMove();
+  //     if (action === 'attack') movement.openAttack();
+  //   });
 
-    const originalOpen  = movement.open.bind(movement);
-    const originalClose = movement.close.bind(movement);
+  //   const originalOpen  = movement.open.bind(movement);
+  //   const originalClose = movement.close.bind(movement);
 
-    movement.open = () => {
-      originalOpen();
-      hud.attachTo(movement.sprite);
-      unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
-    };
+  //   movement.open = () => {
+  //     originalOpen();
+  //     hud.attachTo(movement.sprite);
+  //     unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
+  //   };
 
-    movement.close = () => {
-      originalClose();
-      hud.hide();
-      unitPanel.hide();
-    };
+  //   movement.close = () => {
+  //     originalClose();
+  //     hud.hide();
+  //     unitPanel.hide();
+  //   };
 
-    app.ticker.add(() => hud.update(movement.sprite));
-  }
+  //   app.ticker.add(() => hud.update(movement.sprite));
+  // }
 
   return movement;
 }

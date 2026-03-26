@@ -4,6 +4,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    z-index: 10;
 }
 
 /* ------- TIMER ------- */
@@ -42,46 +43,17 @@
     pointer-events: none;
 }
 
-.timer-banner__bar-track {
-    width: 100%;
-    height: var(--timer-bar-height);
-    background-color: var(--color-border);
-    position: relative;
-    overflow: hidden;
-}
 
-.timer-banner__bar-fill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: var(--color-accent);
-    transition: width 1s linear;
-}
 
-.ready-width {
-    position: absolute;
-    bottom: var(--space-lg);
-    right: var(--space-lg);
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    pointer-events: auto;
-}
 
-.ready-count {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-}
+/* -------- COMPONENTS / WIDGETS -------*/
 
-/* -------- COMPONENTS -------*/
 
 /* --- ANIMATED BUTTON --- */
 .animated-button {
     display: inline-block;
     width: var(--animated-button-width);
-    height: var(--animted-button-height);
+    height: var(--animated-button-height);
     background-image: var(--animated-button-path);
     background-size: calc(var(--animated-button-width) * 3) var(--animated-button-height);
     background-position: 0px 0px;
@@ -107,6 +79,25 @@
 
 .animated-button.animated-button--loaded {
     outline: none;
+}
+
+
+/* READY WIDGET */
+
+.ready-width {
+    position: absolute;
+    bottom: var(--space-lg);
+    right: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    pointer-events: auto;
+}
+
+.ready-count {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
 }
 
 

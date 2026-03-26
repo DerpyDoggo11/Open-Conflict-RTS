@@ -44,7 +44,7 @@ export async function initGame() {
 
   initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
 
-  await colyseusClient.joinGame("Player");
+  //await colyseusClient.joinGame("Player");
 
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
