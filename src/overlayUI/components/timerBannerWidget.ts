@@ -1,5 +1,5 @@
 const TOTAL_BANNER_FRAMES = 11;
-const FRAME_INTERVAL_SECONDS = 10;
+const FRAME_INTERVAL_SECONDS = 6;
 
 export interface TimerBannerOptions {
     durationSeconds: number;
@@ -60,6 +60,8 @@ export class TimerBanner {
         img.onload = () => {
             this._spriteFrameWidth = frameWidth || img.naturalWidth / TOTAL_BANNER_FRAMES;
             const totalWidth = this._spriteFrameWidth * TOTAL_BANNER_FRAMES;
+            this._bannerSprite.style.width = `${this._spriteFrameWidth}px`;
+            this._bannerSprite.style.height = `${img.naturalHeight}px`;
             this._bannerSprite.style.backgroundSize = `${totalWidth}px 100%`;
             this._setSpriteFrame(0);
         };
@@ -75,30 +77,6 @@ export class TimerBanner {
         this._labelElement.textContent = `${this._label}: ${this._remaining}s`;
     }
 
-    start(): void {
-        if (this._started) return;
-        this._started = true;
-
-        this._ticker = setInterval(() => {
-            this._remaining -= 1;
-            this._updateLabel();
-
-            const elapsed = this._duration - this._remaining;
-            const targetFrame = Math.min(
-                Math.floor(elapsed / FRAME_INTERVAL_SECONDS),
-                TOTAL_BANNER_FRAMES - 1,
-            );
-            if (targetFrame !== this._currentSpriteFrame) {
-                this._setSpriteFrame(targetFrame);
-            }
-
-            if (this._remaining <= 0) {
-                this._stop();
-                this._onComplete?.();
-            }
-        }, 1000);
-    }
-
     private _stop(): void {
         if (this._ticker !== null) {
             clearInterval(this._ticker);
@@ -109,6 +87,25 @@ export class TimerBanner {
     destroy(): void {
         this._stop();
         this.element.remove();
+    }
+
+    syncFromServer(timeRemaining: number, totalDuration: number): void {
+        this._remaining = Math.ceil(timeRemaining / 1000);
+        this._updateLabel();
+
+        const elapsed = totalDuration - timeRemaining;
+        const targetFrame = Math.min(
+            Math.floor((elapsed / 1000) / FRAME_INTERVAL_SECONDS),
+            TOTAL_BANNER_FRAMES - 1,
+        );
+        if (targetFrame !== this._currentSpriteFrame) {
+            this._setSpriteFrame(targetFrame);
+        }
+
+        if (this._remaining <= 0) {
+            this._stop();
+            this._onComplete?.();
+        }
     }
 
 }

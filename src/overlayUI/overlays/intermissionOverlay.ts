@@ -35,7 +35,6 @@ export function createIntermissionOverlay(options: IntermissionOptions = {}): HT
         onComplete: triggerStart,
     });
     overlay.appendChild(timer.element);
-    timer.start();
 
     const ready = new ReadyWidget({
         totalPlayers,

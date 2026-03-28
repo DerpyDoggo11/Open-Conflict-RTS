@@ -9,6 +9,7 @@ import {
 } from './entities/selectionUtils';
 //import { DebugOverlay } from './ui/debugOverlay';
 import { colyseusClient } from './network/colyseusClient';
+import { Intermission } from './intermission';
 
 export async function initGame() {
   const app = new PIXI.Application();
@@ -44,7 +45,23 @@ export async function initGame() {
 
   initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
 
-  //await colyseusClient.joinGame("Player");
+  await colyseusClient.joinGame("Player");
+
+  const spawnZone = { x: 5, y: 5, w: 4, h: 4 };
+  new Intermission(
+      app,
+      viewport,
+      mapData,
+      tilesetTextures,
+      characterContainer,
+      hudContainer,
+      objectsTilemap,
+      spawnZone,
+      () => {
+          console.log('Game started!');
+      }
+  );
+
 
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);

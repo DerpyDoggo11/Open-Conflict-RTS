@@ -9,6 +9,7 @@ import { colyseusClient } from '../network/colyseusClient';
 
 export type TroopType = keyof typeof troopDefs;
 
+
 // const unitPanel = new troopInfoOverlay();
 
 // Registry lives here — scoped to this module

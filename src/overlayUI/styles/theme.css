@@ -36,6 +36,10 @@
     --timer-banner-path: url('/assets/ui/timerBanner.png');
     --timer-banner-width: 0px;
 
+    --intermission-troop-selector-bg: url('/assets/ui/selectionMenu.png');
+    --intermission-troop-selector-width: 220px;
+    --intermission-troop-selector-height: 400px;
+
     --animated-button-path: url('/assets/ui/playButton.png');
     --animated-button-width: 160px;
     --animated-button-height: 45px;

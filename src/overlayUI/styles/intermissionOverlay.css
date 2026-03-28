@@ -23,9 +23,8 @@
 .timer-banner__sprite {
     background-repeat: no-repeat;
     background-position: 0 0;
-    width: var(--timer-banner-width, 240px);
-    height: 48px;
     position: relative;
+    zoom: 2.5;
 }
 
 
@@ -36,7 +35,7 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-game);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     white-space: nowrap;
     letter-spacing: 0.05em;
@@ -84,7 +83,7 @@
 
 /* READY WIDGET */
 
-.ready-width {
+.ready-widget {
     position: absolute;
     bottom: var(--space-lg);
     right: var(--space-lg);
