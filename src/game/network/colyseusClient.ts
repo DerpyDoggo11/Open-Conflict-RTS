@@ -31,11 +31,16 @@ export class ColyseusClient {
   constructor() {
     this.client = new Client("ws://localhost:2567");
   }
-  
-  async joinGame(playerName: string): Promise<void> {
-    try {
-      this.room = await this.client.joinOrCreate("game_room", { name: playerName });
 
+  async joinGame(playerName: string): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('roomId');
+
+    try {
+      this.room = roomId
+        ? await this.client.joinById(roomId, { name: playerName })
+        : await this.client.joinOrCreate("game_room", { name: playerName });
+      
       this.room.onMessage("chat", (msg: ChatMessage) => {
         this.chatListeners.forEach(fn => fn(msg));
       });
@@ -93,17 +98,14 @@ export class ColyseusClient {
     }
   }
 
-  // Send troop spawn to server
   spawnTroop(id: string, type: string, tileX: number, tileY: number, health: number): void {
     this.room?.send("spawnTroop", { id, type, tileX, tileY, health });
   }
 
-  // Send troop move to server
   moveTroop(id: string, tileX: number, tileY: number): void {
     this.room?.send("moveTroop", { id, tileX, tileY });
   }
 
-  // Send attack to server
   attackTroop(attackerId: string, targetId: string, damage: number): void {
     this.room?.send("attackTroop", { attackerId, targetId, damage });
   }

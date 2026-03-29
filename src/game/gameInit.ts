@@ -12,13 +12,32 @@ import { colyseusClient } from './network/colyseusClient';
 import { Intermission } from './intermission';
 
 export async function initGame() {
+
+  console.log('[initGame] Starting game initialization...');
+  const params     = new URLSearchParams(window.location.search);
+  const playerName = localStorage.getItem('playerName') ?? 'Player';
+  const map        = params.get('map') ?? 'grasslands';
+
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
+
+  if (!appContainer) {
+    console.error('[initGame] #app element not found');
+    return;
+  }
+  await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
+  appContainer.appendChild(app.canvas);
+
+
+
   await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
   appContainer.appendChild(app.canvas);
 
   const viewport = new PIXI.Container();
   app.stage.addChild(viewport);
+  
+  const mapPath = `./assets/tilemaps/${map}.json`;
+  console.log('[initGame] loading map:', mapPath);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
     './assets/tilemaps/grasslands.json'
@@ -45,7 +64,13 @@ export async function initGame() {
 
   initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
 
-  await colyseusClient.joinGame("Player");
+  try {
+    await colyseusClient.joinGame(playerName);
+    console.log('[initGame] joined game as', playerName);
+  } catch (e) {
+    console.error('[initGame] failed to join game room:', e);
+    return;
+  }
 
   const spawnZone = { x: 5, y: 5, w: 4, h: 4 };
   new Intermission(
@@ -68,3 +93,5 @@ export async function initGame() {
   viewport.scale.set(0.5, 0.5);
   setupCamera(app, viewport);
 }
+
+initGame().catch(console.error);
