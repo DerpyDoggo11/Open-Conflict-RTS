@@ -62,27 +62,6 @@ export class Intermission {
         this._bindServerEvents();
     }
 
-    private _buildOverlay(): void {
-        this.overlay = document.createElement('div');
-        this.overlay.className = 'overlay';
-        document.getElementById('app')!.appendChild(this.overlay);
-
-        this.timer = new TimerBanner({
-            durationSeconds: 60,
-            label: 'Intermission',
-            onComplete: () => this.onComplete(),
-        });
-        this.overlay.appendChild(this.timer.element);
-
-        this.readyWidget = new ReadyWidget({
-            totalPlayers: 2,
-            onReady: (isReady) => {
-                console.log('Local player ready: ', isReady);
-            },
-        });
-        this.overlay.appendChild(this.readyWidget.element);
-    }
-
     private _buildIntermissionSelectorOverlay(): void {
         const troopOptions = troopDefsArray.map(t => ({
             type: t.type as TroopType,
@@ -114,25 +93,53 @@ export class Intermission {
         document.getElementById('app')!.appendChild(this.intermissionSelector.element);
     }
 
+
+    
+    private _buildOverlay(): void {
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'overlay';
+        document.getElementById('app')!.appendChild(this.overlay);
+
+        this.timer = new TimerBanner({
+            durationSeconds: 480,
+            titleLabel: 'Intermission',
+            onComplete: () => this.complete(),
+        });
+        this.overlay.appendChild(this.timer.element);
+
+        this.readyWidget = new ReadyWidget({
+            totalPlayers: 2,
+            onReady: (isReady) => {
+                console.log('Local player ready: ', isReady);
+            },
+        });
+        this.overlay.appendChild(this.readyWidget.element);
+    }
+
     private _bindServerEvents(): void {
-        colyseusClient.onTick(({ timeRemaining, intermissionDuration }) => {
-            this.timer.syncFromServer(timeRemaining, intermissionDuration);
+        colyseusClient.onTick(({ timeRemaining, intermissionDuration, gameDuration }) => {
+        const inIntermission = timeRemaining > (gameDuration - intermissionDuration);
+        if (inIntermission) {
+            const intermissionRemaining = timeRemaining - (gameDuration - intermissionDuration);
+            this.timer.setTitleLabel('Intermission');
+            this.timer.syncFromServer(intermissionRemaining, intermissionDuration);
+        } else {
+            this.timer.setTitleLabel('Game');
+            this.timer.syncFromServer(timeRemaining, gameDuration - intermissionDuration);
+        }
+    });
+
+        colyseusClient.onGameStart(() => {
+            this.complete();
         });
 
         colyseusClient.onTroopSpawn(async (msg) => {
             if (msg.ownerId === colyseusClient.sessionId) return;
-
             await spawnCharacter(
                 msg.type as TroopType,
-                msg.tileX,
-                msg.tileY,
-                this.mapData,
-                this.characterContainer,
-                this.hudContainer,
-                this.app,
-                this.viewport,
-                this.objectsTilemap,
-                this.tilesetTextures,
+                msg.tileX, msg.tileY,
+                this.mapData, this.characterContainer, this.hudContainer,
+                this.app, this.viewport, this.objectsTilemap, this.tilesetTextures,
             );
         });
     }

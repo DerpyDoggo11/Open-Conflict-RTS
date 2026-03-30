@@ -3,7 +3,7 @@ const FRAME_INTERVAL_SECONDS = 6;
 
 export interface TimerBannerOptions {
     durationSeconds: number;
-    label?: string;
+    titleLabel?: string;
     onComplete?: () => void;
 }
 
@@ -14,8 +14,8 @@ export class TimerBanner {
     private readonly _bannerSprite: HTMLElement;
     private readonly _duration: number;
     private readonly _onComplete?: () => void;
-    private readonly _label: string;
 
+    private _titleLabel: string;
     private _remaining: number;
     private _ticker: ReturnType<typeof setInterval> | null = null;
     private _started = false;
@@ -23,12 +23,12 @@ export class TimerBanner {
     private _spriteFrameWidth = 0;
 
     constructor(options: TimerBannerOptions) {
-        const { durationSeconds, label = 'Intermission', onComplete} = options;
+        const { durationSeconds, titleLabel = 'Intermission', onComplete} = options;
 
         this._duration = durationSeconds;
         this._remaining = durationSeconds;
         this._onComplete = onComplete;
-        this._label = label;
+        this._titleLabel = titleLabel;
 
         this.element = document.createElement('div');
         this.element.className = 'timer-banner';
@@ -73,8 +73,12 @@ export class TimerBanner {
         this._bannerSprite.style.backgroundPositionX = `-${frame * this._spriteFrameWidth}px`;
     }
 
+    setTitleLabel(text: string): void {
+        this._titleLabel = text;
+    }
+
     private _updateLabel(): void {
-        this._labelElement.textContent = `${this._label}: ${this._remaining}s`;
+        this._labelElement.textContent = `${this._titleLabel}: ${this._remaining}s`;
     }
 
     private _stop(): void {
@@ -90,14 +94,15 @@ export class TimerBanner {
     }
 
     syncFromServer(timeRemaining: number, totalDuration: number): void {
-        this._remaining = Math.ceil(timeRemaining / 1000);
+        this._remaining = Math.ceil(timeRemaining);
         this._updateLabel();
 
         const elapsed = totalDuration - timeRemaining;
         const targetFrame = Math.min(
-            Math.floor((elapsed / 1000) / FRAME_INTERVAL_SECONDS),
+            Math.floor(elapsed / FRAME_INTERVAL_SECONDS),
             TOTAL_BANNER_FRAMES - 1,
         );
+
         if (targetFrame !== this._currentSpriteFrame) {
             this._setSpriteFrame(targetFrame);
         }
