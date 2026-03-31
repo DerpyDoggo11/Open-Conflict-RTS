@@ -22,6 +22,7 @@ export class ColyseusClient {
   private room: Room | null = null;
   private chatListeners: ((msg: ChatMessage) => void)[] = [];
   private playerCountListeners: ((count: number, max: number) => void)[] = [];
+  private readyStateListeners: ((readyCount: number, totalCount: number) => void)[] = [];
   private tickListeners: ((tick: TickMessage) => void)[] = [];
   private gameStartListeners: (() => void)[] = [];
   private troopMoveListeners: ((msg: TroopMoveMsg) => void)[] = [];
@@ -55,6 +56,9 @@ export class ColyseusClient {
       });
       this.room.onMessage("troopDied", (msg: { id: string }) => {
         this.troopDiedListeners.forEach(fn => fn(msg.id));
+      });
+      this.room.onMessage("playerReady", (msg: { readyCount: number; totalCount: number }) => {
+        this.readyStateListeners.forEach(fn => fn(msg.readyCount,msg.totalCount));
       });
 
       const callbacks = Callbacks.get(this.room);
@@ -108,6 +112,14 @@ export class ColyseusClient {
 
   attackTroop(attackerId: string, targetId: string, damage: number): void {
     this.room?.send("attackTroop", { attackerId, targetId, damage });
+  }
+
+  onReadyStateChange(fn: (readyCount: number, totalCount: number) => void): void {
+    this.readyStateListeners.push(fn);
+  }
+
+  sendReady(isReady: boolean): void {
+    this.room?.send("ready", { isReady });
   }
 
   onTroopSpawn(fn: (msg: TroopSpawnMsg) => void): void { this.troopSpawnListeners.push(fn); }

@@ -110,7 +110,7 @@ export class Intermission {
         this.readyWidget = new ReadyWidget({
             totalPlayers: 2,
             onReady: (isReady) => {
-                console.log('Local player ready: ', isReady);
+                colyseusClient.sendReady(isReady);
             },
         });
         this.overlay.appendChild(this.readyWidget.element);
@@ -118,16 +118,20 @@ export class Intermission {
 
     private _bindServerEvents(): void {
         colyseusClient.onTick(({ timeRemaining, intermissionDuration, gameDuration }) => {
-        const inIntermission = timeRemaining > (gameDuration - intermissionDuration);
-        if (inIntermission) {
-            const intermissionRemaining = timeRemaining - (gameDuration - intermissionDuration);
-            this.timer.setTitleLabel('Intermission');
-            this.timer.syncFromServer(intermissionRemaining, intermissionDuration);
-        } else {
-            this.timer.setTitleLabel('Game');
-            this.timer.syncFromServer(timeRemaining, gameDuration - intermissionDuration);
-        }
-    });
+            const inIntermission = timeRemaining > (gameDuration - intermissionDuration);
+            if (inIntermission) {
+                const intermissionRemaining = timeRemaining - (gameDuration - intermissionDuration);
+                this.timer.setTitleLabel('Intermission');
+                this.timer.syncFromServer(intermissionRemaining, intermissionDuration);
+            } else {
+                this.timer.setTitleLabel('Game');
+                this.timer.syncFromServer(timeRemaining, gameDuration - intermissionDuration);
+            }
+        });
+
+        colyseusClient.onReadyStateChange((readyCount, totalCount) => {
+            this.readyWidget.setReadyCount(readyCount, totalCount)
+        });
 
         colyseusClient.onGameStart(() => {
             this.complete();

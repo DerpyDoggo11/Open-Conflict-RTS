@@ -10,9 +10,9 @@ export class ReadyWidget {
 
     private readonly _button: animatedButton;
     private readonly _countElement: HTMLElement;
-    private readonly _totalPlayers: number;
     private readonly _onReady?: (isReady: boolean) => void;
 
+    private _totalPlayers: number;
     private _isReady = false;
     private _readyCount = 0;
 
@@ -37,8 +37,9 @@ export class ReadyWidget {
         this.element.appendChild(this._button.element);
     }
 
-    setReadyCount(othersReady: number): void {
-        this._readyCount = othersReady + (this._isReady ? 1 : 0);
+    setReadyCount(ready: number, total: number): void {
+        this._readyCount = ready;
+        this._totalPlayers = total;
         this._updateCount();
     }
 
