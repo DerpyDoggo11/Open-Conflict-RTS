@@ -37,8 +37,7 @@
     --timer-banner-width: 0px;
 
     --intermission-troop-selector-bg: url('/assets/ui/selectionMenu.png');
-    --intermission-troop-selector-width: 220px;
-    --intermission-troop-selector-height: 400px;
+    --intermission-troop-selector-width: clamp(260px, 30vw, 400px);
 
     --animated-button-path: url('/assets/ui/playButton.png');
     --animated-button-width: 160px;

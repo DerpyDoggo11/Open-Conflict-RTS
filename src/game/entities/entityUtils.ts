@@ -6,16 +6,14 @@ import { CharacterMovement } from './entityMovement';
 import troopDefs from '../data/troops.json';
 import { clearArrow, clearSelection } from './selectionUtils';
 import { colyseusClient } from '../network/colyseusClient';
+import { TroopHUDController } from '../ui/troopHUDController';
 
 export type TroopType = keyof typeof troopDefs;
 
 
-// const unitPanel = new troopInfoOverlay();
 
-// Registry lives here — scoped to this module
 const troopRegistry = new Map<string, CharacterMovement>();
 
-// Call once after joining to wire up opponent sync
 export function initTroopSync(
   mapData: TiledMap,
   characterContainer: PIXI.Container,
@@ -71,6 +69,7 @@ export async function spawnCharacter(
   tilesetTextures: Map<number, PIXI.Texture>,
   isLocal: boolean = true,
 ): Promise<CharacterMovement> {
+
   const def = troopDefs[type];
   const texture = await PIXI.Assets.load(def.spritePath + '0004.png');
   const sprite = new PIXI.Sprite(texture);
@@ -86,9 +85,9 @@ export async function spawnCharacter(
     objectsTilemap, tilesetTextures, mapData,
     {
       selectionRadius: def.selectionRadius,
-      attackRadius:    def.attackRadius,
-      treeSwapRadius:  def.treeSwapRadius,
-      spritePath:      def.spritePath,
+      attackRadius: def.attackRadius,
+      treeSwapRadius: def.treeSwapRadius,
+      spritePath: def.spritePath,
     },
   );
 
@@ -106,31 +105,29 @@ export async function spawnCharacter(
     };
   }
 
-  // if (isLocal) {
-  //   const hud = new CharacterHUD(hudContainer, (action) => {
-  //     clearSelection();
-  //     clearArrow();
-  //     if (action === 'move')   movement.openMove();
-  //     if (action === 'attack') movement.openAttack();
-  //   });
+  if (isLocal) {
+      movement.id = troopId;
+      movement.ownerId = colyseusClient.sessionId;
+      movement.health = def.maxHealth;
+      movement.maxHealth = def.maxHealth;
+      movement.troopType = type;
+      movement.portraitPath = def.spritePath + '0004.png';
 
-  //   const originalOpen  = movement.open.bind(movement);
-  //   const originalClose = movement.close.bind(movement);
+      const hudController = new TroopHUDController(app, viewport, mapData, tilesetTextures, objectsTilemap);
+      hudController.mount();
 
-  //   movement.open = () => {
-  //     originalOpen();
-  //     hud.attachTo(movement.sprite);
-  //     unitPanel.show(def.spritePath, type, def.maxHealth, def.maxHealth);
-  //   };
+      const originalOpen  = movement.open.bind(movement);
+      const originalClose = movement.close.bind(movement);
 
-  //   movement.close = () => {
-  //     originalClose();
-  //     hud.hide();
-  //     unitPanel.hide();
-  //   };
-
-  //   app.ticker.add(() => hud.update(movement.sprite));
-  // }
+      movement.open = () => {
+          originalOpen();
+          hudController.selectTroop(movement);
+      };
+      movement.close = () => {
+          originalClose();
+          hudController.deselect();
+      };
+  }
 
   return movement;
 }

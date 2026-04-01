@@ -1,0 +1,125 @@
+.troop-hud {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0;
+
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition:
+        opacity var(--transition-normal),
+        transform var(--transition-normal);
+
+    z-index: 10;
+}
+
+.troop-hud--visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.troop-hud__portrait {
+    width: clamp(56px, 8vw, 80px);
+    height: clamp(56px, 8vw, 80px);
+    flex-shrink: 0;
+    background-color: var(--color-bg-panel);
+    border: var(--bracket-weight) solid var(--color-border-dim);
+    overflow: hidden;
+}
+
+.troop-hud__portrait-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    image-rendering: pixelated;
+}
+
+.troop-hud__info {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0;
+    min-width: 0;
+}
+
+.troop-hud__name-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: var(--space-md);
+    padding: 0 var(--space-sm) var(--space-xs) var(--space-sm);
+}
+
+.troop-hud__name {
+    font-family: var(--font-game);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.troop-hud__actions {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: var(--space-sm);
+}
+
+.troop-hud__action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-family: var(--font-game);
+    transition: color var(--transition-fast), filter var(--transition-fast);
+}
+
+.troop-hud__action-btn:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    filter: brightness(1.3);
+}
+
+.troop-hud__action-btn--active {
+    color: var(--color-text-primary);
+    filter: brightness(1.4) drop-shadow(0 0 4px rgba(200, 216, 192, 0.6));
+}
+
+.troop-hud__action-btn--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.troop-hud__action-label {
+    font-size: var(--font-size-xs);
+    line-height: 1;
+}
+
+.troop-hud__action-icon {
+    width: clamp(24px, 4vw, 40px);
+    height: auto;
+    display: block;
+    image-rendering: pixelated;
+}
+
+.troop-hud__health-track {
+    height: var(--timer-bar-height, 3px);
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.45);
+}
+
+.troop-hud__health-bar {
+    height: 100%;
+    background-color: #c03030;
+    transition: width 0.2s ease, background-color 0.3s ease;
+}

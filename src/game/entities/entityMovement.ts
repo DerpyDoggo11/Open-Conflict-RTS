@@ -35,6 +35,14 @@ export class CharacterMovement {
 
   private selectionTileSprite: PIXI.Sprite | null = null;
 
+  public id: string = '';
+  public ownerId: string = '';
+  public health: number = 100;
+  public maxHealth: number = 100;
+  public troopType: string = '';
+  public portraitPath: string = '';
+  private healthChangeListeners: ((hp: number) => void)[] = [];
+
   constructor(
     sprite: PIXI.Sprite,
     tileX: number,
@@ -204,5 +212,14 @@ export class CharacterMovement {
       this.objectsTilemap, this.tilesetTextures,
       this.tileX, this.tileY, 2, this.mapData, true
     );
+  }
+  
+  public takeDamage(amount: number): void {
+    this.health = Math.max(0, this.health - amount);
+    this.healthChangeListeners.forEach(fn => fn(this.health));
+  }
+
+  public onHealthChange(fn: (hp: number) => void): void {
+      this.healthChangeListeners.push(fn);
   }
 }

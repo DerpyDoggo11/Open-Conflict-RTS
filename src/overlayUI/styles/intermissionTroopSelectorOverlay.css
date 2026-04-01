@@ -4,7 +4,7 @@
     inset: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start; 
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--transition-fast);
@@ -17,48 +17,53 @@
 }
 
 .intermission-troop-selector__panel {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    position: relative;
+    left: unset;
+    top: unset;
+    transform: unset;
     pointer-events: auto;
-
     background-image: var(--intermission-troop-selector-bg);
     background-size: 100% 100%;
     background-repeat: no-repeat;
-
-    background-color: rgba(58, 90, 115, 0.85);
     padding: var(--space-lg);
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-md);
 
-    width: var(--intermission-troop-selector-width, 220px);
-    min-height: var(--intermission-troop-selector-height, auto);
+    width: clamp(250px, 25vw, 320px);
+    height: auto;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    align-self: center;
 }
-
 .intermission-troop-selector__grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-sm);
+    flex: 1;
 }
 
 .intermission-troop-selector__card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-xs);
     background: transparent;
     border: 1px solid rgba(200, 212, 220, 0.2);
-    padding: var(--space-xs);
+    padding: var(--space-sm);
     cursor: pointer;
     color: var(--color-text-primary);
     font-family: var(--font-game);
-    transition: border-color var(--transition-fast);
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
+    aspect-ratio: 1;
+    justify-content: center;
+    width: clamp(25px, 25vw, 100px);
 }
 
 .intermission-troop-selector__card:hover {
     border-color: rgba(200, 212, 220, 0.55);
+    background-color: rgba(200, 212, 220, 0.05);
 }
 
 .intermission-troop-selector__card--selected {
@@ -67,7 +72,7 @@
 }
 
 .intermission-troop-selector__icon {
-    width: 100%;
+    width: 60%;
     aspect-ratio: 1;
     object-fit: cover;
     display: block;
@@ -77,10 +82,12 @@
     font-size: var(--font-size-xs);
     color: var(--color-text-primary);
     text-align: center;
+    line-height: 1.2;
 }
 
 .intermission-troop-selector__cost {
     font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
     text-align: center;
 }
 
@@ -88,6 +95,14 @@
     font-family: var(--font-game);
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
-    text-align: right;
-    margin-top: var(--space-xs);
+    text-align: center;
+    padding: var(--space-xs) 0;
+    border-top: 1px solid rgba(200, 212, 220, 0.15);
+    margin-top: auto;
+}
+
+@media (max-width: 500px) {
+    .intermission-troop-selector__panel {
+        width: 100%;
+    }
 }
