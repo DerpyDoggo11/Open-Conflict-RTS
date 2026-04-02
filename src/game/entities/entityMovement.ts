@@ -74,30 +74,42 @@ export class CharacterMovement {
   }
 
   private bindInputEvents(): void {
-    this.app.stage.eventMode = 'static';
-    this.app.stage.hitArea = this.app.screen;
-    this.app.stage.on('pointerdown', this.onPointerDown, this);
+      this.sprite.eventMode = 'static';
+      this.sprite.cursor = 'pointer';
+      this.sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+      });
+      this.sprite.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+          if (this.isSelected) {
+              this.close();
+          } else {
+              this.open();
+          }
+      });
   }
 
   public destroy(): void {
-    this.app.stage.off('pointerdown', this.onPointerDown, this);
-    this.clearSelectionTile();
+      this.sprite.off('pointerdown');
+      this.sprite.off('pointerup');
+      this.clearSelectionTile();
   }
-  private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
-    const worldPos = this.viewport.toLocal(e.global);
-    const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
-    const isCharTile = tileX === this.tileX && tileY === this.tileY;
 
-    if (isCharTile) {
-      if (this.isSelected) {
-        this.close();
-      } else {
-        this.open();
-      }
-    } else if (this.isSelected) {
-      this.close();
-    }
-  };
+  // private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
+  //   const worldPos = this.viewport.toLocal(e.global);
+  //   const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
+  //   const isCharTile = tileX === this.tileX && tileY === this.tileY;
+
+  //   if (isCharTile) {
+  //     if (this.isSelected) {
+  //       this.close();
+  //     } else {
+  //       this.open();
+  //     }
+  //   } else if (this.isSelected) {
+  //     this.close();
+  //   }
+  // };
 
   private clearSelectionTile(): void {
     if (this.selectionTileSprite) {
@@ -213,7 +225,7 @@ export class CharacterMovement {
       this.tileX, this.tileY, 2, this.mapData, true
     );
   }
-  
+
   public takeDamage(amount: number): void {
     this.health = Math.max(0, this.health - amount);
     this.healthChangeListeners.forEach(fn => fn(this.health));

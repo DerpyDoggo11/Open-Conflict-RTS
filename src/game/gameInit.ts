@@ -10,6 +10,7 @@ import {
 //import { DebugOverlay } from './ui/debugOverlay';
 import { colyseusClient } from './network/colyseusClient';
 import { Intermission } from './intermission';
+import { TroopHUDController } from './ui/troopHUDController';
 
 export async function initGame() {
 
@@ -25,11 +26,6 @@ export async function initGame() {
     console.error('[initGame] #app element not found');
     return;
   }
-  await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
-  appContainer.appendChild(app.canvas);
-
-
-
   await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
   appContainer.appendChild(app.canvas);
 
@@ -83,7 +79,7 @@ export async function initGame() {
       objectsTilemap,
       spawnZone,
       () => {
-          console.log('Game started!');
+        console.log('Game started!');
       }
   );
 

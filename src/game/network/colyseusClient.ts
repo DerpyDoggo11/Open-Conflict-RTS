@@ -28,12 +28,23 @@ export class ColyseusClient {
   private troopMoveListeners: ((msg: TroopMoveMsg) => void)[] = [];
   private troopSpawnListeners: ((msg: TroopSpawnMsg) => void)[] = [];
   private troopDiedListeners: ((id: string) => void)[] = [];
+  private _seenTroopIds = new Set<string>();
+
 
   constructor() {
     this.client = new Client("ws://localhost:2567");
   }
 
   async joinGame(playerName: string): Promise<void> {
+    this.troopSpawnListeners = [];
+    this.troopMoveListeners = [];
+    this.troopDiedListeners = [];
+    this.tickListeners = [];
+    this.playerCountListeners = [];
+    this.gameStartListeners = [];
+    this.readyStateListeners = [];
+    this._seenTroopIds.clear();
+
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get('roomId');
 
@@ -65,36 +76,33 @@ export class ColyseusClient {
 
       callbacks.onAdd("troops", (troop: any, id: unknown) => {
         const troopId = id as string;
-        
-        const msg: TroopSpawnMsg = {
-          id: troopId,
-          type: troop.type,
-          tileX: troop.tileX,
-          tileY: troop.tileY,
-          health: troop.health,
-          ownerId: troop.ownerId,
-        };
+        if (this._seenTroopIds.has(troopId)) return;
+        this._seenTroopIds.add(troopId);
 
-        console.log("troop added:", msg);
+        const msg: TroopSpawnMsg = {
+            id: troopId,
+            type: troop.type,
+            tileX: troop.tileX,
+            tileY: troop.tileY,
+            health: troop.health,
+            ownerId: troop.ownerId,
+        };
 
         this.troopSpawnListeners.forEach(fn => fn(msg));
 
         callbacks.onChange(troop, () => {
-          this.troopMoveListeners.forEach(fn => fn({
-            id: troopId,
-            tileX: troop.tileX,
-            tileY: troop.tileY,
-          }));
+            this.troopMoveListeners.forEach(fn => fn({
+                id: troopId,
+                tileX: troop.tileX,
+                tileY: troop.tileY,
+            }));
         });
-      });
+    });
 
-      callbacks.onRemove("troops", (_troop: any, id: unknown) => {
+    callbacks.onRemove("troops", (_troop: any, id: unknown) => {
+        this._seenTroopIds.delete(id as string);
         this.troopDiedListeners.forEach(fn => fn(id as string));
-      });
-
-      callbacks.onRemove("troops", (_troop: any, id: unknown) => {
-        this.troopDiedListeners.forEach(fn => fn(id as string));
-      });
+    });
 
     } catch (e) {
       console.error("Failed to join:", e);
@@ -120,6 +128,10 @@ export class ColyseusClient {
 
   sendReady(isReady: boolean): void {
     this.room?.send("ready", { isReady });
+  }
+
+  sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number): void {
+    this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage });
   }
 
   onTroopSpawn(fn: (msg: TroopSpawnMsg) => void): void { this.troopSpawnListeners.push(fn); }

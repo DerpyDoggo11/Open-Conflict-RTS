@@ -95,39 +95,37 @@ export async function spawnCharacter(
 
   if (isLocal) {
     troopRegistry.set(troopId, movement);
-
     colyseusClient.spawnTroop(troopId, type, tileX, tileY, def.maxHealth);
+
+    movement.id = troopId;
+    movement.ownerId = colyseusClient.sessionId;
+    movement.health = def.maxHealth;
+    movement.maxHealth = def.maxHealth;
+    movement.troopType = type;
+    movement.portraitPath = def.portraitPath;
 
     const originalMoveTo = movement.moveTo.bind(movement);
     movement.moveTo = (tx: number, ty: number) => {
-      originalMoveTo(tx, ty);
-      colyseusClient.moveTroop(troopId, tx, ty);
+        originalMoveTo(tx, ty);
+        colyseusClient.moveTroop(troopId, tx, ty);
     };
-  }
 
-  if (isLocal) {
-      movement.id = troopId;
-      movement.ownerId = colyseusClient.sessionId;
-      movement.health = def.maxHealth;
-      movement.maxHealth = def.maxHealth;
-      movement.troopType = type;
-      movement.portraitPath = def.spritePath + '0004.png';
+    const hudController = new TroopHUDController(app, viewport, mapData, tilesetTextures, objectsTilemap);
+    hudController.mount();
 
-      const hudController = new TroopHUDController(app, viewport, mapData, tilesetTextures, objectsTilemap);
-      hudController.mount();
+    const originalOpen  = movement.open.bind(movement);
+    const originalClose = movement.close.bind(movement);
 
-      const originalOpen  = movement.open.bind(movement);
-      const originalClose = movement.close.bind(movement);
-
-      movement.open = () => {
-          originalOpen();
-          hudController.selectTroop(movement);
-      };
-      movement.close = () => {
-          originalClose();
-          hudController.deselect();
-      };
-  }
+    movement.open = () => {
+      console.log('[entityUtils] open called for', troopId);
+      originalOpen();
+      hudController.selectTroop(movement);
+    };
+    movement.close = () => {
+      originalClose();
+      hudController.deselect();
+    };
+}
 
   return movement;
 }

@@ -1,34 +1,42 @@
 {
   "general": {
-    "spritePath": "./assets/troops/general/",
+    "spritePath": "./assets/troops/general/sprite/",
+    "portraitPath": "/assets/troops/general/portrait.png",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
     "treeSwapRadius": 5,
-    "maxHealth": 100
+    "maxHealth": 100,
+    "actions": ["move", "rifle", "grenades"]
   },
   "grunt": {
-    "spritePath": "./assets/troops/grunt/",
+    "spritePath": "./assets/troops/grunt/sprite/",
+    "portraitPath": "/assets/troops/grunt/portrait.png",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 3,
     "treeSwapRadius": 5,
-    "maxHealth": 80
+    "maxHealth": 80,
+    "actions": ["move", "rifle"]
   },
   "machineGunner": {
-    "spritePath": "./assets/troops/machineGunner/",
+    "spritePath": "./assets/troops/machineGunner/sprite/",
+    "portraitPath": "/assets/troops/machineGunner/portrait.png",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
     "treeSwapRadius": 5,
-    "maxHealth": 80
+    "maxHealth": 80,
+    "actions": ["move", "machineGun"]
   },
   "tankDestroyer": {
-    "spritePath": "./assets/troops/tankDestroyer/",
+    "spritePath": "./assets/troops/tankDestroyer/sprite/",
+    "portraitPath": "/assets/troops/tankDestroyer/portrait.png",
     "scale": 1,
     "selectionRadius": 5,
     "attackRadius": 6,
     "treeSwapRadius": 5,
-    "maxHealth": 200
+    "maxHealth": 200,
+    "actions": ["move", "tankShell"]
   }
 }

@@ -186,15 +186,12 @@ export class Intermission {
     }
 
     private async _spawnTroop(type: TroopType, tileX: number, tileY: number): Promise<void> {
-        const character = await spawnCharacter(
+        await spawnCharacter(
             type, tileX, tileY,
             this.mapData, this.characterContainer, this.hudContainer,
             this.app, this.viewport, this.objectsTilemap, this.tilesetTextures,
+            true,
         );
-
-        const id = crypto.randomUUID();
-        const troopDef = troopDefsArray.find(t => t.type === type);
-        colyseusClient.spawnTroop(id, type, tileX, tileY, troopDef?.health ?? 100);
 
         this.placedCount++;
         const remaining = document.getElementById('troops-remaining');
