@@ -1,31 +1,30 @@
 {
   "move": {
     "label": "Move",
-    "iconPath": "/assets/ui/icons/move.png",
+    "iconPath": "/assets/icons/actionIcons/moveIcon.png",
     "type": "move"
+  },
+  "repair": {
+    "label": "Repair",
+    "iconPath": "/assets/icons/actionIcons/repairIcon.png",
+    "type": "repair"
   },
   "rifle": {
     "label": "Primary",
-    "iconPath": "/assets/ui/icons/rifle.png",
+    "iconPath": "/assets/icons/actionIcons/assaultRifleIcon.png",
     "type": "attack",
     "damage": 20
   },
   "machineGun": {
     "label": "Primary",
-    "iconPath": "/assets/ui/icons/machineGun.png",
+    "iconPath": "/assets/icons/actionIcons/machineGunIcon.png",
     "type": "attack",
     "damage": 10
   },
   "tankShell": {
     "label": "Primary",
-    "iconPath": "/assets/ui/icons/tankShell.png",
+    "iconPath": "/assets/icons/actionIcons/tankShellIcon.png",
     "type": "attack",
     "damage": 60
-  },
-  "grenades": {
-    "label": "Secondary",
-    "iconPath": "/assets/ui/icons/grenades.png",
-    "type": "attack",
-    "damage": 35
   }
 }

@@ -43,6 +43,10 @@
     --animated-button-width: 160px;
     --animated-button-height: 45px;
 
+    --health-bar-path: url('/assets/ui/healthBar.png');
+    --health-bar-frame-width: 0px;
+    --health-bar-frame-height: 0px;
+
     --transition-fast:   80ms ease;
     --transition-normal: 140ms ease;
 }

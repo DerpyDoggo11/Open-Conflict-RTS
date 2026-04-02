@@ -7,7 +7,7 @@
     "attackRadius": 4,
     "treeSwapRadius": 5,
     "maxHealth": 100,
-    "actions": ["move", "rifle", "grenades"]
+    "actions": ["move", "repair"]
   },
   "grunt": {
     "spritePath": "./assets/troops/grunt/sprite/",
