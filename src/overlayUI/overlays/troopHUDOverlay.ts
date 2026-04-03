@@ -135,7 +135,7 @@ export class TroopHUD {
             const btn = document.createElement('button');
             btn.className = [
                 'troop-hud__action-btn',
-                action.disabled                    ? 'troop-hud__action-btn--disabled' : '',
+                action.disabled ? 'troop-hud__action-btn--disabled' : '',
                 this._activeActionID === action.id ? 'troop-hud__action-btn--active'   : '',
             ].filter(Boolean).join(' ');
             btn.disabled = !!action.disabled;

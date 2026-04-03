@@ -143,10 +143,6 @@ export class CharacterMovement {
   }
 
   public open(): void {
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true
-    );
     this.isSelected = true;
   }
 
@@ -184,14 +180,6 @@ export class CharacterMovement {
     clearSelection();
     clearArrow();
     this.clearSelectionTile();
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, false
-    );
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      this.tileX, this.tileY, 3, this.mapData, true
-    );
     this.isSelected = false;
   }
 
@@ -243,10 +231,6 @@ export class CharacterMovement {
     swapNearbyTrees(
       this.objectsTilemap, this.tilesetTextures,
       this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true
-    );
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      this.tileX, this.tileY, 2, this.mapData, true
     );
   }
 

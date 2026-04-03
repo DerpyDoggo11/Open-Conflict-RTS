@@ -130,12 +130,75 @@ export class Intermission {
         chatBox.className = 'chat-box';
         this.overlay.appendChild(chatBox);
 
-        const icon = chatBtn.querySelector('.chat-toggle-btn__icon') as HTMLImageElement;
+        const inner = document.createElement('div');
+        inner.className = 'chat-box__inner';
+        chatBox.appendChild(inner);
 
+        const messages = document.createElement('div');
+        messages.className = 'chat-box__messages';
+        inner.appendChild(messages);
+
+        const inputRow = document.createElement('div');
+        inputRow.className = 'chat-box__input-row';
+        inner.appendChild(inputRow);
+
+        const input = document.createElement('input');
+        input.className = 'chat-box__input';
+        input.type = 'text';
+        input.placeholder = 'Type a message...';
+        input.maxLength = 200;
+        inputRow.appendChild(input);
+
+        const sendBtn = document.createElement('button');
+        sendBtn.className = 'chat-box__send';
+        sendBtn.textContent = 'Send';
+        inputRow.appendChild(sendBtn);
+
+        const icon = chatBtn.querySelector('.chat-toggle-btn__icon') as HTMLImageElement;
         chatBtn.addEventListener('click', () => {
             const isOpen = chatBox.classList.toggle('chat-box--open');
             chatBtn.classList.toggle('chat-toggle-btn--open', isOpen);
             icon.src = isOpen ? '/assets/ui/arrowUp.png' : '/assets/ui/arrowDown.png';
+            if (isOpen) input.focus();
+        });
+
+        const send = () => {
+            const text = input.value.trim();
+            if (!text) return;
+            colyseusClient.sendChat(text);
+            input.value = '';
+            input.focus();
+        };
+
+        sendBtn.addEventListener('click', send);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') send();
+        });
+
+        colyseusClient.onChat((msg) => {
+            const element = document.createElement('div');
+            element.className = msg.playerId === 'system' ? 'chat-msg chat-msg--system' : 'chat-msg';
+
+            if (msg.playerId === 'system') {
+                element.textContent = msg.text;
+            } else {
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'chat-msg__name';
+                nameSpan.textContent = `${msg.name}:`;
+                element.appendChild(nameSpan);
+
+                if (msg.playerId === colyseusClient.sessionId) {
+                    const youSpan = document.createElement('i');
+                    youSpan.textContent = ' (You)';
+                    nameSpan.appendChild(youSpan);
+                }
+
+                //nameSpan.appendChild(document.createTextNode(':'));
+                element.appendChild(document.createTextNode(' ' + msg.text));
+            }
+
+            messages.appendChild(element);
+            messages.scrollTop = messages.scrollHeight;
         });
     }
 
