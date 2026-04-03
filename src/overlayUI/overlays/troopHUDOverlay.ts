@@ -33,14 +33,9 @@ export class TroopHUD {
         this._maxHealth = options.maxHealth;
         this._actions = options.actions;
 
-        // ── Root ──────────────────────────────────────────────────────────────
-        // Grid:
-        //   "portrait  name     actions"
-        //   "health    health   actions"
         this.element = document.createElement('div');
         this.element.className = 'troop-hud';
 
-        // ── Portrait (grid-area: portrait) ────────────────────────────────────
         const portrait = document.createElement('div');
         portrait.className = 'troop-hud__portrait';
         this._portraitElement = document.createElement('img');
@@ -50,7 +45,6 @@ export class TroopHUD {
         portrait.appendChild(this._portraitElement);
         this.element.appendChild(portrait);
 
-        // ── Name (grid-area: name) ────────────────────────────────────────────
         const nameCell = document.createElement('div');
         nameCell.className = 'troop-hud__name-cell';
         this._nameElement = document.createElement('span');
@@ -59,13 +53,10 @@ export class TroopHUD {
         nameCell.appendChild(this._nameElement);
         this.element.appendChild(nameCell);
 
-        // ── Actions (grid-area: actions, spans both rows) ─────────────────────
-        // Each button: label at top, icon at bottom via justify-content: space-between
         this._actionsElement = document.createElement('div');
         this._actionsElement.className = 'troop-hud__actions';
         this.element.appendChild(this._actionsElement);
 
-        // ── Health bar (grid-area: health) ────────────────────────────────────
         const healthTrack = document.createElement('div');
         healthTrack.className = 'troop-hud__health-track';
         this._healthBarSprite = document.createElement('div');
@@ -76,8 +67,6 @@ export class TroopHUD {
         this._renderActions();
         this._initHealthSprite();
     }
-
-    // ── Health sprite ──────────────────────────────────────────────────────────
 
     private _initHealthSprite(): void {
         const style = getComputedStyle(document.documentElement);
@@ -105,8 +94,6 @@ export class TroopHUD {
         this._healthBarSprite.style.backgroundPositionX =
             `-${frame * this._scaledFrameWidth}px`;
     }
-
-    // ── Public API ─────────────────────────────────────────────────────────────
 
     setHealth(current: number, max?: number): void {
         this._currentHealth = Math.max(0, current);
@@ -140,8 +127,6 @@ export class TroopHUD {
     show(): void  { this.element.classList.add('troop-hud--visible'); }
     hide(): void  { this.element.classList.remove('troop-hud--visible'); }
     destroy(): void { this.element.remove(); }
-
-    // ── Private ────────────────────────────────────────────────────────────────
 
     private _renderActions(): void {
         this._actionsElement.innerHTML = '';

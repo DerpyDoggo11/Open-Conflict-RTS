@@ -69,7 +69,7 @@ export class Intermission {
             type: t.type as TroopType,
             label: t.name ?? t.type,
             cost: t.cost ?? 0,
-            iconPath: t.iconPath ?? undefined,
+            iconPath: t.portraitPath ?? undefined,
         }));
 
         this.intermissionSelector = new IntermissionTroopSelectorOverlay({
@@ -123,15 +123,19 @@ export class Intermission {
     private _buildChatUI(): void {
         const chatBtn = document.createElement('button');
         chatBtn.className = 'chat-toggle-btn';
-        chatBtn.innerHTML = '<img class="chat-toggle-btn__icon" src="/assets/ui/chatOpen.png" alt="Chat" />';
+        chatBtn.innerHTML = '<img class="chat-toggle-btn__icon" src="/assets/ui/arrowDown.png" alt="Chat" />';
         this.overlay.appendChild(chatBtn);
 
         const chatBox = document.createElement('div');
         chatBox.className = 'chat-box';
         this.overlay.appendChild(chatBox);
 
+        const icon = chatBtn.querySelector('.chat-toggle-btn__icon') as HTMLImageElement;
+
         chatBtn.addEventListener('click', () => {
-            chatBox.classList.toggle('chat-box--open');
+            const isOpen = chatBox.classList.toggle('chat-box--open');
+            chatBtn.classList.toggle('chat-toggle-btn--open', isOpen);
+            icon.src = isOpen ? '/assets/ui/arrowUp.png' : '/assets/ui/arrowDown.png';
         });
     }
 

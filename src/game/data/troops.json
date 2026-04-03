@@ -2,6 +2,7 @@
   "general": {
     "spritePath": "./assets/troops/general/sprite/",
     "portraitPath": "/assets/troops/general/portrait.png",
+    "name": "General",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
@@ -12,6 +13,7 @@
   "grunt": {
     "spritePath": "./assets/troops/grunt/sprite/",
     "portraitPath": "/assets/troops/grunt/portrait.png",
+    "name": "Grunt",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 3,
@@ -22,6 +24,7 @@
   "machineGunner": {
     "spritePath": "./assets/troops/machineGunner/sprite/",
     "portraitPath": "/assets/troops/machineGunner/portrait.png",
+    "name": "Machine Gunner",
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
@@ -32,6 +35,7 @@
   "tankDestroyer": {
     "spritePath": "./assets/troops/tankDestroyer/sprite/",
     "portraitPath": "/assets/troops/tankDestroyer/portrait.png",
+    "name": "Tank Destroyer",
     "scale": 1,
     "selectionRadius": 5,
     "attackRadius": 6,

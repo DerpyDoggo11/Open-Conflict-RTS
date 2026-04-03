@@ -122,29 +122,38 @@
     border: none;
     cursor: pointer;
     padding: 0;
-    z-index: 11;
+    margin: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 0;
+    z-index: 12;
+    transition: top 0.3s ease;
 }
-
 .chat-toggle-btn__icon {
     width: 32px;
     height: 32px;
     image-rendering: pixelated;
+    display: block;
 }
 
 .chat-box {
     position: absolute;
-    top: calc(var(--space-md) + 40px);
+    top: var(--space-md);
     right: var(--space-md);
     width: 280px;
     height: 320px;
-    background-image: url('/assets/ui/chat-bg.png');
-    background-size: cover;
+    background-image: url('/assets/ui/chatMenu.png');
+    background-size: 100% 100%;
     background-repeat: no-repeat;
-    pointer-events: auto;
-    display: none;
+    pointer-events: none;
     z-index: 11;
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 0.3s ease;
 }
 
 .chat-box--open {
-    display: block;
+    clip-path: inset(0 0 0 0);
+}
+.chat-toggle-btn--open {
+    top: calc(var(--space-md) + 320px + var(--space-sm, 4px));
 }

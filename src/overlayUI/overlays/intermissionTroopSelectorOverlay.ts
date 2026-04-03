@@ -2,7 +2,7 @@ export interface IntermissionTroopOptions {
     type: string;
     label: string;
     cost: number;
-    iconPath?: string;
+    iconPath: string;
 }
 
 export interface IntermissionTroopSelectorOptions {
@@ -44,14 +44,6 @@ export class IntermissionTroopSelectorOverlay {
             card.className = 'intermission-troop-selector__card';
             card.dataset.troop = troop.type;
 
-            if (troop.iconPath) {
-                const icon = document.createElement('img');
-                icon.className = 'intermission-troop-selector__icon';
-                icon.src = troop.iconPath;
-                icon.alt = troop.label;
-                card.appendChild(icon);
-            }
-
             const name = document.createElement('span');
             name.className = 'intermission-troop-selector__name';
             name.textContent = troop.label;
@@ -62,6 +54,14 @@ export class IntermissionTroopSelectorOverlay {
 
             card.appendChild(name);
             card.appendChild(cost);
+
+            if (troop.iconPath) {
+                const icon = document.createElement('img');
+                icon.className = 'intermission-troop-selector__icon';
+                icon.src = troop.iconPath;
+                icon.alt = troop.label;
+                card.appendChild(icon);
+            }
 
             card.addEventListener('click', () => {
                 this._grid.querySelectorAll('.intermission-troop-selector__card').forEach(c => 
