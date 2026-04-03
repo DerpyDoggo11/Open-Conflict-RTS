@@ -23,28 +23,26 @@ export function initTroopSync(
   objectsTilemap: CompositeTilemap,
   tilesetTextures: Map<number, PIXI.Texture>,
 ): void {
-
+  
   colyseusClient.onTroopSpawn(async (msg) => {
-    console.log("spawn received:", msg.id, "owner:", msg.ownerId, "me:", colyseusClient.sessionId);
-    
-    if (msg.ownerId === colyseusClient.sessionId) {
-      console.log("skipping own troop");
-      return;
-    }
-
+    if (msg.ownerId === colyseusClient.sessionId) return;
     const movement = await spawnCharacter(
-      msg.type as TroopType,
-      msg.tileX, msg.tileY,
-      mapData, characterContainer, hudContainer,
-      app, viewport, objectsTilemap, tilesetTextures,
-      false,
+        msg.type as TroopType,
+        msg.tileX, msg.tileY,
+        mapData, characterContainer, hudContainer,
+        app, viewport, objectsTilemap, tilesetTextures,
+        false,
     );
+    movement.ownerId = msg.ownerId; 
+    movement.id = msg.id; 
     troopRegistry.set(msg.id, movement);
   });
 
   colyseusClient.onTroopMove((msg) => {
     const m = troopRegistry.get(msg.id);
-    if (m) m.moveTo(msg.tileX, msg.tileY);
+    if (m && m.ownerId !== colyseusClient.sessionId) {
+        m.moveTo(msg.tileX, msg.tileY);
+    }
   });
 
   colyseusClient.onTroopDied((id) => {

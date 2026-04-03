@@ -30,6 +30,8 @@ export class Intermission {
     private readyWidget!: ReadyWidget;
     private intermissionSelector!: IntermissionTroopSelectorOverlay;
 
+    private _intermissionComplete = false;
+
     private pendingTile: {
         tileX: number;
         tileY: number
@@ -114,11 +116,28 @@ export class Intermission {
             },
         });
         this.overlay.appendChild(this.readyWidget.element);
+
+        this._buildChatUI();
+    }
+
+    private _buildChatUI(): void {
+        const chatBtn = document.createElement('button');
+        chatBtn.className = 'chat-toggle-btn';
+        chatBtn.innerHTML = '<img class="chat-toggle-btn__icon" src="/assets/ui/chatOpen.png" alt="Chat" />';
+        this.overlay.appendChild(chatBtn);
+
+        const chatBox = document.createElement('div');
+        chatBox.className = 'chat-box';
+        this.overlay.appendChild(chatBox);
+
+        chatBtn.addEventListener('click', () => {
+            chatBox.classList.toggle('chat-box--open');
+        });
     }
 
     private _bindServerEvents(): void {
         colyseusClient.onTick(({ timeRemaining, intermissionDuration, gameDuration }) => {
-            const inIntermission = timeRemaining > (gameDuration - intermissionDuration);
+            const inIntermission = !this._intermissionComplete && timeRemaining > (gameDuration - intermissionDuration);
             if (inIntermission) {
                 const intermissionRemaining = timeRemaining - (gameDuration - intermissionDuration);
                 this.timer.setTitleLabel('Intermission');
@@ -135,16 +154,6 @@ export class Intermission {
 
         colyseusClient.onGameStart(() => {
             this.complete();
-        });
-
-        colyseusClient.onTroopSpawn(async (msg) => {
-            if (msg.ownerId === colyseusClient.sessionId) return;
-            await spawnCharacter(
-                msg.type as TroopType,
-                msg.tileX, msg.tileY,
-                this.mapData, this.characterContainer, this.hudContainer,
-                this.app, this.viewport, this.objectsTilemap, this.tilesetTextures,
-            );
         });
     }
 
@@ -201,12 +210,16 @@ export class Intermission {
     }
 
     private complete(): void {
+        this._intermissionComplete = true;
+
         for (const s of this.spawnZoneSprites) s.destroy();
         this.spawnZoneSprites.length = 0;
         this.spawnZoneContainer.destroy();
 
-        this.overlay.remove();
+        this.readyWidget.element.remove();
         this.intermissionSelector.element.remove();
+
+        this.timer.setTitleLabel('Game');
 
         this.onComplete();
     }

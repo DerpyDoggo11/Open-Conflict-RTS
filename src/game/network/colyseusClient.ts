@@ -72,38 +72,40 @@ export class ColyseusClient {
         this.readyStateListeners.forEach(fn => fn(msg.readyCount,msg.totalCount));
       });
 
-      const callbacks = Callbacks.get(this.room);
+      this.room.onStateChange.once(() => {
+        const callbacks = Callbacks.get(this.room!);
+        callbacks.onAdd("troops", (troop: any, troopId: unknown) => {
+          const id = troopId as string;
+          if (this._seenTroopIds.has(id)) return;
+          this._seenTroopIds.add(id);
 
-      callbacks.onAdd("troops", (troop: any, id: unknown) => {
-        const troopId = id as string;
-        if (this._seenTroopIds.has(troopId)) return;
-        this._seenTroopIds.add(troopId);
+          const msg: TroopSpawnMsg = {
+              id,
+              type: troop.type,
+              tileX: troop.tileX,
+              tileY: troop.tileY,
+              health: troop.health,
+              ownerId: troop.ownerId,
+          };
 
-        const msg: TroopSpawnMsg = {
-            id: troopId,
-            type: troop.type,
-            tileX: troop.tileX,
-            tileY: troop.tileY,
-            health: troop.health,
-            ownerId: troop.ownerId,
-        };
+          this.troopSpawnListeners.forEach(fn => fn(msg));
 
-        this.troopSpawnListeners.forEach(fn => fn(msg));
-
-        callbacks.onChange(troop, () => {
-            this.troopMoveListeners.forEach(fn => fn({
-                id: troopId,
-                tileX: troop.tileX,
-                tileY: troop.tileY,
-            }));
+          callbacks.onChange(troop, () => {
+              this.troopMoveListeners.forEach(fn => fn({
+                  id,
+                  tileX: troop.tileX,
+                  tileY: troop.tileY,
+              })
+            );
+          });
         });
-    });
 
-    callbacks.onRemove("troops", (_troop: any, id: unknown) => {
-        this._seenTroopIds.delete(id as string);
-        this.troopDiedListeners.forEach(fn => fn(id as string));
-    });
-
+        callbacks.onRemove("troops", (_troop: any, troopId: unknown) => {
+            const id = troopId as string;
+            this._seenTroopIds.delete(id);
+            this.troopDiedListeners.forEach(fn => fn(id));
+        });
+      });
     } catch (e) {
       console.error("Failed to join:", e);
       throw e;

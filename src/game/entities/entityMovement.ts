@@ -43,6 +43,13 @@ export class CharacterMovement {
   public portraitPath: string = '';
   private healthChangeListeners: ((hp: number) => void)[] = [];
 
+  private static allCharacters: Set<CharacterMovement> = new Set();
+  private static viewportBound = false;
+  private static activeApp: PIXI.Application | null = null;
+  private static activeViewport: PIXI.Container | null = null;
+  private static activeMapData: TiledMap | null = null;
+    
+
   constructor(
     sprite: PIXI.Sprite,
     tileX: number,
@@ -74,42 +81,59 @@ export class CharacterMovement {
   }
 
   private bindInputEvents(): void {
-      this.sprite.eventMode = 'static';
-      this.sprite.cursor = 'pointer';
-      this.sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
-          e.stopPropagation();
-      });
-      this.sprite.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
-          e.stopPropagation();
-          if (this.isSelected) {
-              this.close();
-          } else {
-              this.open();
-          }
-      });
+      CharacterMovement.allCharacters.add(this);
+
+      if (!CharacterMovement.viewportBound) {
+          CharacterMovement.activeApp = this.app;
+          CharacterMovement.activeViewport = this.viewport;
+          CharacterMovement.activeMapData = this.mapData;
+          this.viewport.eventMode = 'static';
+          this.viewport.on('pointerup', CharacterMovement.onSharedPointerUp);
+          this.viewport.on('pointermove', CharacterMovement.onSharedPointerMove);
+          CharacterMovement.viewportBound = true;
+      }
   }
+
+  private static onSharedPointerUp = (e: PIXI.FederatedPointerEvent): void => {
+      const vp = CharacterMovement.activeViewport!;
+      const md = CharacterMovement.activeMapData!;
+      const worldPos = vp.toLocal(e.global);
+      const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, md);
+
+      for (const char of CharacterMovement.allCharacters) {
+          if (tileX === char.tileX && tileY === char.tileY) {
+              e.stopPropagation();
+              if (char.isSelected) {
+                  char.close();
+              } else {
+                  char.open();
+              }
+              return;
+          }
+      }
+  };
+
+  private static onSharedPointerMove = (e: PIXI.FederatedPointerEvent): void => {
+      const vp = CharacterMovement.activeViewport!;
+      const md = CharacterMovement.activeMapData!;
+      const app = CharacterMovement.activeApp!;
+      const worldPos = vp.toLocal(e.global);
+      const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, md);
+
+      let hovering = false;
+      for (const char of CharacterMovement.allCharacters) {
+          if (tileX === char.tileX && tileY === char.tileY) {
+              hovering = true;
+              break;
+          }
+      }
+      app.canvas.style.cursor = hovering ? 'pointer' : 'default';
+  };
 
   public destroy(): void {
-      this.sprite.off('pointerdown');
-      this.sprite.off('pointerup');
+      CharacterMovement.allCharacters.delete(this);
       this.clearSelectionTile();
   }
-
-  // private onPointerDown = (e: PIXI.FederatedPointerEvent): void => {
-  //   const worldPos = this.viewport.toLocal(e.global);
-  //   const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, this.mapData);
-  //   const isCharTile = tileX === this.tileX && tileY === this.tileY;
-
-  //   if (isCharTile) {
-  //     if (this.isSelected) {
-  //       this.close();
-  //     } else {
-  //       this.open();
-  //     }
-  //   } else if (this.isSelected) {
-  //     this.close();
-  //   }
-  // };
 
   private clearSelectionTile(): void {
     if (this.selectionTileSprite) {

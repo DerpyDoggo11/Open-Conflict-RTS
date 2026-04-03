@@ -112,3 +112,39 @@
 .start-flash--visible {
     opacity: 0.15;
 }
+
+.chat-toggle-btn {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    pointer-events: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 11;
+}
+
+.chat-toggle-btn__icon {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+
+.chat-box {
+    position: absolute;
+    top: calc(var(--space-md) + 40px);
+    right: var(--space-md);
+    width: 280px;
+    height: 320px;
+    background-image: url('/assets/ui/chat-bg.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    pointer-events: auto;
+    display: none;
+    z-index: 11;
+}
+
+.chat-box--open {
+    display: block;
+}

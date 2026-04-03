@@ -58,8 +58,6 @@ export async function initGame() {
 
   createOceanMesh(app, viewport, mapData);
 
-  initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
-
   try {
     await colyseusClient.joinGame(playerName);
     console.log('[initGame] joined game as', playerName);
@@ -67,6 +65,8 @@ export async function initGame() {
     console.error('[initGame] failed to join game room:', e);
     return;
   }
+
+  initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsTilemap, tilesetTextures);
 
   const spawnZone = { x: 5, y: 5, w: 4, h: 4 };
   new Intermission(
