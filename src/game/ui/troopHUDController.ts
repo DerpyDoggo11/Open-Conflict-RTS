@@ -32,7 +32,7 @@ export class TroopHUDController {
     private viewport: PIXI.Container,
     private mapData: TiledMap,
     private tilesetTextures: Map<number, PIXI.Texture>,
-    private objectsTilemap: CompositeTilemap,
+    private objectsTilemap: PIXI.Container,
   ) {}
 
   mount(): void {

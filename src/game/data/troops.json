@@ -6,7 +6,7 @@
     "scale": 0.5,
     "selectionRadius": 2,
     "attackRadius": 4,
-    "treeSwapRadius": 5,
+    "treeSwapRadius": 3,
     "maxHealth": 100,
     "actions": ["move", "repair"]
   },

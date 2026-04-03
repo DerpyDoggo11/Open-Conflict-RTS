@@ -4,7 +4,8 @@ import { type TiledMap } from '../types/tilemapTypes';
 import { tileToScreen, screenToTile } from '../tilemap/tilemapUtils';
 import {
   clearArrow, clearSelection, drawArrowToTile,
-  spawnSelectionRadius, swapNearbyTrees, initArrow, initSelection
+  spawnSelectionRadius, initArrow, initSelection,
+  updateTreeTransparency
 } from './selectionUtils';
 
 export interface CharacterMovementOptions {
@@ -20,7 +21,7 @@ export class CharacterMovement {
   public tileY: number;
   public isSelected: boolean = false;
 
-  private objectsTilemap: CompositeTilemap;
+  private objectsTilemap: PIXI.Container;
   private tilesetTextures: Map<number, PIXI.Texture>;
   private mapData: TiledMap;
   private viewport: PIXI.Container;
@@ -49,14 +50,13 @@ export class CharacterMovement {
   private static activeViewport: PIXI.Container | null = null;
   private static activeMapData: TiledMap | null = null;
     
-
   constructor(
     sprite: PIXI.Sprite,
     tileX: number,
     tileY: number,
     app: PIXI.Application,
     viewport: PIXI.Container,
-    objectsTilemap: CompositeTilemap,
+    objectsTilemap: PIXI.Container,
     tilesetTextures: Map<number, PIXI.Texture>,
     mapData: TiledMap,
     options: CharacterMovementOptions = {}
@@ -78,6 +78,8 @@ export class CharacterMovement {
     this.spritePath = options.spritePath ?? '';
 
     this.bindInputEvents();
+    this.sprite.zIndex = tileToScreen(tileX, tileY, this.mapData).y;
+    updateTreeTransparency(this.getTransparencyZones());
   }
 
   private bindInputEvents(): void {
@@ -219,19 +221,12 @@ export class CharacterMovement {
 
     const screenPos = tileToScreen(tileX, tileY, this.mapData);
     this.sprite.position.set(screenPos.x, screenPos.y + this.mapData.tileheight / 2);
+    this.sprite.zIndex = screenPos.y;
     this.updateSpriteDirection(prevTileX, prevTileY);
 
     clearSelection();
     clearArrow();
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      prevTileX, prevTileY, this.treeSwapRadius, this.mapData, false
-    );
-
-    swapNearbyTrees(
-      this.objectsTilemap, this.tilesetTextures,
-      this.tileX, this.tileY, this.treeSwapRadius, this.mapData, true
-    );
+    updateTreeTransparency(this.getTransparencyZones());
   }
 
   public takeDamage(amount: number): void {
@@ -242,4 +237,13 @@ export class CharacterMovement {
   public onHealthChange(fn: (hp: number) => void): void {
       this.healthChangeListeners.push(fn);
   }
+
+  private getTransparencyZones(): { x: number; y: number; radius: number }[] {
+      const zones: { x: number; y: number; radius: number }[] = [];
+      for (const char of CharacterMovement.allCharacters) {
+          zones.push({ x: char.tileX, y: char.tileY, radius: char.treeSwapRadius });
+      }
+      return zones;
+  }
+
 }

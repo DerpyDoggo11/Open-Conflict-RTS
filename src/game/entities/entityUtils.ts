@@ -20,7 +20,7 @@ export function initTroopSync(
   hudContainer: PIXI.Container,
   app: PIXI.Application,
   viewport: PIXI.Container,
-  objectsTilemap: CompositeTilemap,
+  objectsTilemap: PIXI.Container,
   tilesetTextures: Map<number, PIXI.Texture>,
 ): void {
   
@@ -63,11 +63,11 @@ export async function spawnCharacter(
   hudContainer: PIXI.Container,
   app: PIXI.Application,
   viewport: PIXI.Container,
-  objectsTilemap: CompositeTilemap,
+  objectsContainer: PIXI.Container,
   tilesetTextures: Map<number, PIXI.Texture>,
   isLocal: boolean = true,
 ): Promise<CharacterMovement> {
-
+  
   const def = troopDefs[type];
   const texture = await PIXI.Assets.load(def.spritePath + '0004.png');
   const sprite = new PIXI.Sprite(texture);
@@ -75,12 +75,14 @@ export async function spawnCharacter(
   sprite.anchor.set(0.5, 1);
   sprite.position.set(screenPos.x, screenPos.y + mapData.tileheight / 2);
   sprite.scale.set(def.scale);
-  characterContainer.addChild(sprite);
+  sprite.zIndex = screenPos.y;
+
+  objectsContainer.addChild(sprite);
 
   const movement = new CharacterMovement(
     sprite, tileX, tileY,
     app, viewport,
-    objectsTilemap, tilesetTextures, mapData,
+    objectsContainer, tilesetTextures, mapData,
     {
       selectionRadius: def.selectionRadius,
       attackRadius: def.attackRadius,
@@ -108,7 +110,7 @@ export async function spawnCharacter(
         colyseusClient.moveTroop(troopId, tx, ty);
     };
 
-    const hudController = new TroopHUDController(app, viewport, mapData, tilesetTextures, objectsTilemap);
+    const hudController = new TroopHUDController(app, viewport, mapData, tilesetTextures, objectsContainer);
     hudController.mount();
 
     const originalOpen  = movement.open.bind(movement);

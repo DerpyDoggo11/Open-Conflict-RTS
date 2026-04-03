@@ -45,7 +45,7 @@ export class Intermission {
         private tilesetTextures: Map<number, PIXI.Texture>,
         private characterContainer: PIXI.Container,
         private hudContainer: PIXI.Container,
-        private objectsTilemap: CompositeTilemap,
+        private objectsTilemap: PIXI.Container,
         private spawnZone: {
             x: number;
             y: number;
