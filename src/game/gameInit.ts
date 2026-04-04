@@ -7,33 +7,34 @@ import {
   clearArrow, clearSelection, drawArrowToTile,
   initArrow, initSelection, initTrees, spawnSelectionRadius
 } from './entities/selectionUtils';
-//import { DebugOverlay } from './ui/debugOverlay';
 import { colyseusClient } from './network/colyseusClient';
 import { Intermission } from './intermission';
 import { TroopHUDController } from './ui/troopHUDController';
 
-export async function initGame() {
+const TEAM_SPAWN_ZONES: Record<string, { x: number; y: number; w: number; h: number }> = {
+  Red:  { x: -11,  y: -4,  w: 4, h: 4 },
+  Blue: { x: 8, y: -4, w: 4, h: 4 },
+};
 
+export async function initGame() {
   console.log('[initGame] Starting game initialization...');
-  const params     = new URLSearchParams(window.location.search);
+
+  const params = new URLSearchParams(window.location.search);
   const playerName = localStorage.getItem('playerName') ?? 'Player';
-  const map        = params.get('map') ?? 'grasslands';
+  const map = params.get('map') ?? 'grasslands';
 
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
-
   if (!appContainer) {
     console.error('[initGame] #app element not found');
     return;
   }
+
   await app.init({ background: '#cfe4e7', resizeTo: appContainer, preference: 'webgl' });
   appContainer.appendChild(app.canvas);
 
   const viewport = new PIXI.Container();
   app.stage.addChild(viewport);
-  
-  const mapPath = `./assets/tilemaps/${map}.json`;
-  console.log('[initGame] loading map:', mapPath);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
     './assets/tilemaps/grasslands.json'
@@ -44,11 +45,11 @@ export async function initGame() {
   initTrees(objectsContainer, tilesetTextures, mapData);
   objectsContainer.sortableChildren = true;
   objectsContainer.label = 'Objects';
-  // const objectsTilemap = tilemaps.get('Objects')!;
-  // groundTilemap.label = 'Ground';
-  // objectsTilemap.label = 'Objects';
 
-  const characterContainer = new PIXI.Container();
+  const clientCharacterContainer = new PIXI.Container();
+  const opponentCharacterContainer = new PIXI.Container();
+  opponentCharacterContainer.visible = false;
+
   const hudContainer = new PIXI.Container();
   const selectionContainer = new PIXI.Container();
 
@@ -56,7 +57,8 @@ export async function initGame() {
   viewport.addChild(objectsContainer);
   initSelection(selectionContainer);
   initArrow(viewport);
-  viewport.addChild(characterContainer);
+  viewport.addChild(clientCharacterContainer);
+  viewport.addChild(opponentCharacterContainer);
   viewport.addChild(selectionContainer);
   viewport.addChild(hudContainer);
 
@@ -70,23 +72,54 @@ export async function initGame() {
     return;
   }
 
-  initTroopSync(mapData, characterContainer, hudContainer, app, viewport, objectsContainer, tilesetTextures);
-
-  const spawnZone = { x: 5, y: 5, w: 4, h: 4 };
-  new Intermission(
-      app,
-      viewport,
-      mapData,
-      tilesetTextures,
-      characterContainer,
-      hudContainer,
-      objectsContainer,
-      spawnZone,
-      () => {
-        console.log('Game started!');
-      }
+  initTroopSync(
+    mapData,
+    clientCharacterContainer,
+    opponentCharacterContainer,
+    hudContainer,
+    app,
+    viewport,
+    objectsContainer,
+    tilesetTextures
   );
 
+  let intermission: Intermission | null = null;
+
+  colyseusClient.onPlayersUpdate((teams) => {
+    let myTeam: string | null = null;
+    for (const team of teams) {
+      for (const player of team.players) {
+        if (player.id === colyseusClient.sessionId) {
+          myTeam = team.teamName;
+          break;
+        }
+      }
+      if (myTeam) break;
+    }
+
+    if (myTeam && !intermission) {
+      const spawnZone = TEAM_SPAWN_ZONES[myTeam] ?? TEAM_SPAWN_ZONES['Red'];
+
+      intermission = new Intermission(
+        app,
+        viewport,
+        mapData,
+        tilesetTextures,
+        clientCharacterContainer, 
+        opponentCharacterContainer,
+        hudContainer,
+        objectsContainer,
+        spawnZone,
+        () => {
+          console.log('Game started!');
+        }
+      );
+
+      intermission.updateTeamsList(teams);
+    } else if (intermission) {
+      intermission.updateTeamsList(teams);
+    }
+  });
 
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);

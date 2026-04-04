@@ -13,6 +13,7 @@ export interface CharacterMovementOptions {
   attackRadius?: number;
   treeSwapRadius?: number;
   spritePath?: string;
+  isLocal?: boolean;
 }
 
 export class CharacterMovement {
@@ -35,6 +36,8 @@ export class CharacterMovement {
   private spritePath: string;
 
   private selectionTileSprite: PIXI.Sprite | null = null;
+
+  public isLocal: boolean = true;
 
   public id: string = '';
   public ownerId: string = '';
@@ -76,6 +79,8 @@ export class CharacterMovement {
     this.attackRadius = options.attackRadius ?? 3;
     this.treeSwapRadius = options.treeSwapRadius ?? 0;
     this.spritePath = options.spritePath ?? '';
+
+    this.isLocal = options.isLocal ?? true;
 
     this.bindInputEvents();
     this.sprite.zIndex = tileToScreen(tileX, tileY, this.mapData).y;
@@ -239,11 +244,12 @@ export class CharacterMovement {
   }
 
   private getTransparencyZones(): { x: number; y: number; radius: number }[] {
-      const zones: { x: number; y: number; radius: number }[] = [];
-      for (const char of CharacterMovement.allCharacters) {
-          zones.push({ x: char.tileX, y: char.tileY, radius: char.treeSwapRadius });
-      }
-      return zones;
+    const zones: { x: number; y: number; radius: number }[] = [];
+    for (const char of CharacterMovement.allCharacters) {
+      if (!char.isLocal) continue;
+      zones.push({ x: char.tileX, y: char.tileY, radius: char.treeSwapRadius });
+    }
+    return zones;
   }
 
 }

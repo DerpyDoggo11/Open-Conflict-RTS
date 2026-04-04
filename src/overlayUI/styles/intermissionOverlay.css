@@ -1,4 +1,3 @@
-
 /* -------- INTERMISSION OVERLAY ------- */
 .overlay {
     position: absolute;
@@ -113,11 +112,25 @@
     opacity: 0.15;
 }
 
-.chat-toggle-btn {
+
+/* -------- CHAT CONTROLS (teams + chat buttons) -------- */
+
+.chat-controls {
     position: absolute;
     top: var(--space-md);
     right: var(--space-md);
+    display: flex;
+    gap: 8px;
+    z-index: 12;
     pointer-events: auto;
+    transition: top 0.3s ease;
+}
+
+.chat-controls--open {
+    top: calc(var(--space-md) + 320px + var(--space-sm, 4px));
+}
+
+.chat-controls__btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -126,15 +139,27 @@
     width: 32px;
     height: 32px;
     line-height: 0;
-    z-index: 12;
-    transition: top 0.3s ease;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
 }
-.chat-toggle-btn__icon {
+
+.chat-controls__btn:hover {
+    opacity: 1;
+}
+
+.chat-controls__btn--active {
+    opacity: 1;
+}
+
+.chat-controls__icon {
     width: 32px;
     height: 32px;
     image-rendering: pixelated;
     display: block;
 }
+
+
+/* -------- CHAT / TEAMS PANEL -------- */
 
 .chat-box {
     position: absolute;
@@ -153,9 +178,7 @@
 
 .chat-box--open {
     clip-path: inset(0 0 0 0);
-}
-.chat-toggle-btn--open {
-    top: calc(var(--space-md) + 320px + var(--space-sm, 4px));
+    pointer-events: auto;
 }
 
 .chat-box__inner {
@@ -235,10 +258,6 @@
 .chat-box__send:hover {
     border-color: rgba(200, 212, 220, 0.5);
 }
-.chat-box--open {
-    clip-path: inset(0 0 0 0);
-    pointer-events: auto;
-}
 .chat-msg--self .chat-msg__name {
     color: var(--color-text-primary);
     opacity: 0.7;
@@ -248,4 +267,47 @@
 }
 .chat-msg__name i {
     color: rgba(200, 212, 220, 0.5);
+}
+
+.chat-box__teams {
+    overflow-y: auto;
+}
+
+.teams-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.team-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.team-group__header {
+    font-family: var(--font-game);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(200, 212, 220, 0.15);
+}
+
+.team-player {
+    font-family: var(--font-game);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-primary);
+    padding: 2px 0;
+    line-height: 1.3;
+}
+
+.team-player__name {
+    color: var(--color-text-primary);
+}
+
+.team-player__you {
+    color: rgba(200, 212, 220, 0.5);
+    font-style: italic;
 }

@@ -57,13 +57,13 @@ export class TroopHUDController {
     const isOwned = character.ownerId === colyseusClient.sessionId;
     const def = troopDefs[character.troopType as keyof typeof troopDefs];
 
-    const actions = (def.actions as string[]).map(actionId => {
+    const actions = !isOwned ? [] : (def.actions as string[]).map(actionId => {
       const actionDef = actionDefs[actionId as keyof typeof actionDefs] as ActionDef;
       return {
         id: actionId,
         label: actionDef.label,
         iconPath: actionDef.iconPath,
-        disabled: !isOwned,
+        disabled: false,
         onClick: () => {
           if (actionDef.type === 'move') {
             this._toggleMove();
@@ -80,10 +80,12 @@ export class TroopHUDController {
       maxHealth: character.maxHealth,
       actions,
     });
-
-    this.hud.setHealth(character.health, character.maxHealth);
+    
     document.getElementById('app')!.appendChild(this.hud.element);
-    requestAnimationFrame(() => this.hud?.show());
+    requestAnimationFrame(() => {
+        this.hud?.show();
+        this.hud?.setHealth(character.health, character.maxHealth);
+    });
 
     character.onHealthChange((hp) => {
       this.hud?.setHealth(hp, character.maxHealth);

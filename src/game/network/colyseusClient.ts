@@ -71,7 +71,9 @@ export class ColyseusClient {
       this.room.onMessage("playerReady", (msg: { readyCount: number; totalCount: number }) => {
         this.readyStateListeners.forEach(fn => fn(msg.readyCount,msg.totalCount));
       });
-
+      this.room.onMessage("playersUpdate", (teams) => {
+        this.playersUpdateListeners.forEach(fn => fn(teams));
+      });
       this.room.onStateChange.once(() => {
         const callbacks = Callbacks.get(this.room!);
         callbacks.onAdd("troops", (troop: any, troopId: unknown) => {
@@ -134,6 +136,15 @@ export class ColyseusClient {
 
   sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number): void {
     this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage });
+  }
+
+  private playersUpdateListeners: ((teams: {
+    teamName: string;
+    players: { id: string; name: string }[];
+  }[]) => void)[] = [];
+
+  onPlayersUpdate(fn: (teams: { teamName: string; players: { id: string; name: string }[] }[]) => void): void {
+    this.playersUpdateListeners.push(fn);
   }
 
   onTroopSpawn(fn: (msg: TroopSpawnMsg) => void): void { this.troopSpawnListeners.push(fn); }

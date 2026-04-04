@@ -25,7 +25,7 @@ export class TroopHUD {
     private _actions: TroopAction[];
     private _activeActionID: string | null = null;
     private _scaledFrameWidth: number = 0;
-    private _currentFrame: number = 62;
+    private _currentFrame: number = 0;
     private readonly TOTAL_HEALTH_FRAMES = 63;
 
     constructor(options: TroopHUDOptions) {
@@ -99,7 +99,7 @@ export class TroopHUD {
         this._currentHealth = Math.max(0, current);
         if (max !== undefined) this._maxHealth = max;
         const pct = this._maxHealth > 0 ? this._currentHealth / this._maxHealth : 0;
-        const frame = Math.round(pct * (this.TOTAL_HEALTH_FRAMES - 1));
+        const frame = Math.round((1 - pct) * (this.TOTAL_HEALTH_FRAMES - 1));  // ← inverted
         this._setHealthFrame(frame);
     }
 
