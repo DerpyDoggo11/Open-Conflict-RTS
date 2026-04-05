@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { loadTiledMap } from './tilemap/tilemapLoader';
 import { createOceanMesh } from './tilemap/oceanBackground';
-import { initTroopSync, spawnCharacter } from './entities/entityUtils';
+import { initTroopSync, preloadAllTroopAssets, spawnCharacter } from './entities/entityUtils';
 import { setupCamera } from './entities/camera';
 import {
   clearArrow, clearSelection, drawArrowToTile,
@@ -58,6 +58,12 @@ export async function initGame() {
 
   createOceanMesh(app, viewport, mapData);
 
+  try {
+    await preloadAllTroopAssets();
+  } catch (e) {
+    console.error('[initGame] Failed to preload troop assets:', e);
+  }
+  
   try {
     await colyseusClient.joinGame(playerName);
     console.log('[initGame] joined game as', playerName);

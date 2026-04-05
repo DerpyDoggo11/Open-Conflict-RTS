@@ -10,7 +10,11 @@
     "maxHealth": 100,
     "spriteYOffset": 0,
     "footprintTiles": [{ "dx": 0, "dy": 0 }],
-    "actions": ["move", "repair"]
+    "actions": ["move", "repair"],
+    "animations": {
+      "idle":  { "fps": 8  },
+      "move":  { "fps": 12 }
+    }
   },
   "grunt": {
     "spritePath": "./assets/troops/grunt/sprite/",
@@ -23,7 +27,12 @@
     "maxHealth": 80,
     "spriteYOffset": 0,
     "footprintTiles": [{ "dx": 0, "dy": 0 }],
-    "actions": ["move", "rifle"]
+    "actions": ["move", "rifle"],
+    "animations": {
+      "idle":  { "fps": 8  },
+      "move":  { "fps": 12 },
+      "shoot": { "fps": 14, "loops": 2 }
+    }
   },
   "machineGunner": {
     "spritePath": "./assets/troops/machineGunner/sprite/",
@@ -36,7 +45,12 @@
     "maxHealth": 80,
     "spriteYOffset": 0,
     "footprintTiles": [{ "dx": 0, "dy": 0 }],
-    "actions": ["move", "machineGun"]
+    "actions": ["move", "machineGun"],
+    "animations": {
+      "idle":  { "fps": 8  },
+      "move":  { "fps": 12 },
+      "shoot": { "fps": 18, "loops": 4 }
+    }
   },
   "tankDestroyer": {
     "spritePath": "./assets/troops/tankDestroyer/sprite/",
@@ -48,12 +62,17 @@
     "treeSwapRadius": 5,
     "maxHealth": 200,
     "spriteYOffset": 128,
+    "moveDuration": 0.5,
     "footprint": {
       "forward": 1,
       "backward": 0,
       "left": 0,
       "right": 0
     },
-    "actions": ["move", "tankShell"]
+    "actions": ["move", "tankShell"],
+    "animations": {
+      "idle":  { "fps": 6  },
+      "move":  { "fps": 10 }
+    }
   }
 }
