@@ -9,15 +9,14 @@ import { TroopHUDController } from '../ui/troopHUDController';
 export type TroopType = keyof typeof troopDefs;
 
 const troopRegistry = new Map<string, CharacterMovement>();
+let intermissionComplete = false;
 
 export function initTroopSync(
   mapData: TiledMap,
-  clientContainer: PIXI.Container,
-  opponentContainer: PIXI.Container,
   hudContainer: PIXI.Container,
   app: PIXI.Application,
   viewport: PIXI.Container,
-  objectsTilemap: PIXI.Container,
+  objectsContainer: PIXI.Container,
   tilesetTextures: Map<number, PIXI.Texture>,
 ): void {
 
@@ -27,10 +26,14 @@ export function initTroopSync(
     const movement = await spawnCharacter(
       msg.type as TroopType,
       msg.tileX, msg.tileY,
-      mapData, opponentContainer, hudContainer,
-      app, viewport, objectsTilemap, tilesetTextures,
+      mapData, hudContainer,
+      app, viewport, objectsContainer, tilesetTextures,
       false,
     );
+
+    if (intermissionComplete) {
+      movement.setVisible(true);
+    }
 
     movement.ownerId  = msg.ownerId;
     movement.id = msg.id;
@@ -59,7 +62,6 @@ export async function spawnCharacter(
   tileX: number,
   tileY: number,
   mapData: TiledMap,
-  characterContainer: PIXI.Container,
   hudContainer: PIXI.Container,
   app: PIXI.Application,
   viewport: PIXI.Container,
@@ -73,12 +75,16 @@ export async function spawnCharacter(
   const screenPos = tileToScreen(tileX, tileY, mapData);
 
   sprite.anchor.set(0.5, 1);
-  sprite.position.set(screenPos.x, screenPos.y + mapData.tileheight / 2);
+  const yOffset = (def as any).spriteYOffset ?? 0;
+  sprite.position.set(screenPos.x, screenPos.y + mapData.tileheight / 2 + yOffset);
   sprite.scale.set(def.scale);
-  sprite.zIndex = screenPos.y;
-  if (!isLocal) sprite.tint = new PIXI.Color('#D9CACC');
 
-  characterContainer.addChild(sprite);
+  if (!isLocal) {
+    sprite.visible = false;
+    sprite.tint = new PIXI.Color('#D9CACC');
+  }
+
+  objectsContainer.addChild(sprite);
 
   const movement = new CharacterMovement(
     sprite, tileX, tileY,
@@ -89,6 +95,8 @@ export async function spawnCharacter(
       attackRadius: def.attackRadius,
       treeSwapRadius: def.treeSwapRadius,
       spritePath: def.spritePath,
+      spriteYOffset: (def as any).spriteYOffset ?? 0,
+      footprint: (def as any).footprint ?? { forward: 0, backward: 0, left: 0, right: 0 },
       isLocal,
     },
   );
@@ -131,4 +139,16 @@ export async function spawnCharacter(
   };
 
   return movement;
+}
+
+export function revealAllEnemies(localSessionId: string): void {
+  for (const movement of troopRegistry.values()) {
+    if (movement.ownerId !== localSessionId) {
+      movement.setVisible(true);
+    }
+  }
+}
+
+export function setIntermissionComplete(): void {
+  intermissionComplete = true;
 }

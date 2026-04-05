@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 import { CompositeTilemap } from '@pixi/tilemap';
 import { type TiledMap } from '../types/tilemapTypes';
 import { isTileInWalkableBounds, tileToScreen } from '../tilemap/tilemapUtils';
+import { CharacterMovement } from './entityMovement';
 
 const TREE_GID = 2;
 const TRANSPARENT_TREE_GID = 4;
@@ -79,12 +80,17 @@ export function spawnSelectionRadius(
   radius: number,
   tileGid: number,
   mapData: TiledMap,
+  movingCharacter: CharacterMovement,
   onHover: (tileX: number, tileY: number) => void,
   onHoverOut: () => void,
   onClick: (tileX: number, tileY: number) => void,
 ): void {
   clearSelection();
   if (!selectionContainer) return;
+
+  const blockedSet = new Set(
+    CharacterMovement.getAllOccupiedTiles().map(t => `${t.tileX},${t.tileY}`)
+  );
 
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
@@ -93,6 +99,14 @@ export function spawnSelectionRadius(
       const tileY = centerY + dy;
       if (!isTileInWalkableBounds(tileX, tileY, mapData)) continue;
       if (tileX === centerX && tileY === centerY) continue;
+
+      const ddx = tileX - centerX;
+      const ddy = tileY - centerY;
+      const isMoving = ddx !== 0 || ddy !== 0;
+      const prospectiveFdx = isMoving ? (ddx === 0 ? 0 : ddx / Math.abs(ddx)) : movingCharacter.facingDx;
+      const prospectiveFdy = isMoving ? (ddy === 0 ? 0 : ddy / Math.abs(ddy)) : movingCharacter.facingDy;
+
+      if (movingCharacter.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) continue;
 
       const texture = tilesetTextures.get(tileGid);
       if (!texture) continue;
@@ -127,6 +141,66 @@ export function clearSelection(): void {
   selectionSprites.length = 0;
 }
 
+const spawnZoneSprites: PIXI.Sprite[] = [];
+let spawnZoneContainer: PIXI.Container | null = null;
+
+export function initSpawnZone(container: PIXI.Container): void {
+  spawnZoneContainer = container;
+}
+
+export function spawnSpawnZone(
+  tilesetTextures: Map<number, PIXI.Texture>,
+  spawnZone: { x: number; y: number; w: number; h: number },
+  spawnGid: number,
+  mapData: TiledMap,
+  onClick: (tileX: number, tileY: number) => void,
+): void {
+  clearSpawnZone();
+  if (!spawnZoneContainer) return;
+
+  const texture = tilesetTextures.get(spawnGid);
+  if (!texture) return;
+
+  const blockedSet = new Set(
+    CharacterMovement.getAllOccupiedTiles().map(t => `${t.tileX},${t.tileY}`)
+  );
+
+  for (let dx = 0; dx < spawnZone.w; dx++) {
+    for (let dy = 0; dy < spawnZone.h; dy++) {
+      const tileX = spawnZone.x + dx;
+      const tileY = spawnZone.y + dy;
+
+      if (!isTileInWalkableBounds(tileX, tileY, mapData)) continue;
+      if (blockedSet.has(`${tileX},${tileY}`)) continue;
+
+      const screenPos = tileToScreen(tileX, tileY, mapData);
+      const sprite = new PIXI.Sprite(texture);
+      sprite.anchor.set(0.5, 0.5);
+      sprite.position.set(screenPos.x, screenPos.y);
+      sprite.eventMode = 'static';
+      sprite.cursor = 'pointer';
+
+      sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
+        e.stopPropagation();
+      });
+      sprite.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
+        e.stopPropagation();
+        onClick(tileX, tileY);
+      });
+
+      spawnZoneContainer.addChild(sprite);
+      spawnZoneSprites.push(sprite);
+    }
+  }
+}
+
+export function clearSpawnZone(): void {
+  for (const sprite of spawnZoneSprites) {
+    sprite.destroy();
+  }
+  spawnZoneSprites.length = 0;
+}
+
 const treeSprites: Map<string, { sprite: PIXI.Sprite; originalGid: number }> = new Map();
 let objectsContainerRef: PIXI.Container | null = null;
 let tilesetTexturesRef: Map<number, PIXI.Texture> | null = null;
@@ -137,6 +211,7 @@ export function initTrees(
   tilesetTextures: Map<number, PIXI.Texture>,
   mapData: TiledMap
 ): void {
+  objectsContainer.sortableChildren = true;
   objectsContainerRef = objectsContainer;
   tilesetTexturesRef = tilesetTextures;
   mapDataRef = mapData;
@@ -156,11 +231,18 @@ export function initTrees(
         const texture = tilesetTextures.get(gid);
         if (!texture) continue;
 
-        const screenPos = tileToScreen(worldX, worldY, mapData);
+        // const screenPos = tileToScreen(worldX, worldY, mapData);
         const sprite = new PIXI.Sprite(texture);
+        // sprite.anchor.set(0.5, 1);
+        // sprite.position.set(screenPos.x + mapData.tilewidth / 2, screenPos.y + mapData.tileheight);
+        // sprite.zIndex = worldX + worldY;
+        const footTileX = worldX + 1;
+        const footTileY = worldY + 1;
+        const footScreen = tileToScreen(footTileX, footTileY, mapData);
+
         sprite.anchor.set(0.5, 1);
-        sprite.position.set(screenPos.x + mapData.tilewidth / 2, screenPos.y + mapData.tileheight);
-        sprite.zIndex = screenPos.y;
+        sprite.position.set(footScreen.x, footScreen.y + mapData.tileheight / 2);
+        sprite.zIndex = footTileX + footTileY; 
 
         objectsContainer.addChild(sprite);
         const key = `${worldX},${worldY}`;

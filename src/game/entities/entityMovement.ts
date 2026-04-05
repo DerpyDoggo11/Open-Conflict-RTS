@@ -14,6 +14,13 @@ export interface CharacterMovementOptions {
   treeSwapRadius?: number;
   spritePath?: string;
   isLocal?: boolean;
+  spriteYOffset?: number; 
+  footprint?: {
+    forward: number;
+    backward: number;
+    left: number;
+    right: number;
+  };
 }
 
 export class CharacterMovement {
@@ -21,6 +28,8 @@ export class CharacterMovement {
   public tileX: number;
   public tileY: number;
   public isSelected: boolean = false;
+  public facingDx: number = 1;
+  public facingDy: number = 1;
 
   private objectsTilemap: PIXI.Container;
   private tilesetTextures: Map<number, PIXI.Texture>;
@@ -34,6 +43,11 @@ export class CharacterMovement {
   private attackRadius: number;
   private treeSwapRadius: number;
   private spritePath: string;
+
+  private spriteYOffset: number;
+  private footprint: { forward: number; backward: number; left: number; right: number };
+
+
 
   private selectionTileSprite: PIXI.Sprite | null = null;
 
@@ -80,10 +94,13 @@ export class CharacterMovement {
     this.treeSwapRadius = options.treeSwapRadius ?? 0;
     this.spritePath = options.spritePath ?? '';
 
+    this.spriteYOffset   = options.spriteYOffset ?? 0;
+    this.footprint = options.footprint ?? { forward: 0, backward: 0, left: 0, right: 0 };
+
     this.isLocal = options.isLocal ?? true;
 
     this.bindInputEvents();
-    this.sprite.zIndex = tileToScreen(tileX, tileY, this.mapData).y;
+    this.updateZIndex();
     updateTreeTransparency(this.getTransparencyZones());
   }
 
@@ -142,11 +159,26 @@ export class CharacterMovement {
       this.clearSelectionTile();
   }
 
+  public setVisible(visible: boolean): void {
+    this.sprite.visible = visible;
+  }
+
   private clearSelectionTile(): void {
     if (this.selectionTileSprite) {
       this.selectionTileSprite.destroy();
       this.selectionTileSprite = null;
     }
+  }
+
+  private updateZIndex(): void {
+    const tiles = this.getOccupiedTiles();
+    let maxSum = -Infinity;
+    for (const t of tiles) {
+      const sum = t.tileX + t.tileY;
+      if (sum > maxSum) maxSum = sum;
+    }
+    
+    this.sprite.zIndex = maxSum - 0.5;
   }
 
   public open(): void {
@@ -160,6 +192,7 @@ export class CharacterMovement {
       this.tilesetTextures, this.tileX, this.tileY,
       this.selectionRadius, this.selectionGid,
       this.mapData,
+      this,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
       (tx, ty) => { this.moveTo(tx, ty); },
@@ -173,6 +206,7 @@ export class CharacterMovement {
       this.tilesetTextures, this.tileX, this.tileY,
       this.attackRadius, this.attackGid,
       this.mapData,
+      this,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
       (tx, ty) => {
@@ -189,26 +223,20 @@ export class CharacterMovement {
     this.clearSelectionTile();
     this.isSelected = false;
   }
-
-  private updateSpriteDirection(prevTileX: number, prevTileY: number): void {
-    const dx = this.tileX - prevTileX;
-    const dy = this.tileY - prevTileY;
-
-    const nx = dx === 0 ? 0 : dx / Math.abs(dx);
-    const ny = dy === 0 ? 0 : dy / Math.abs(dy);
-
+  
+  private updateSpriteDirection(): void {
     const directionMap: Record<string, string> = {
-      '-1,-1': '0008', // NW
-      '-1,0':  '0001', // W
-      '-1,1':  '0002', // SW
-      '0,1':   '0003', // S
-      '1,1':   '0004', // SE
-      '1,0':   '0005', // E
-      '1,-1':  '0006', // NE
-      '0,-1':  '0007', // N
+      '-1,-1': '0008',
+      '-1,0':  '0001',
+      '-1,1':  '0002',
+      '0,1':   '0003',
+      '1,1':   '0004',
+      '1,0':   '0005',
+      '1,-1':  '0006',
+      '0,-1':  '0007',
     };
 
-    const key = `${nx},${ny}`;
+    const key = `${this.facingDx},${this.facingDy}`;
     const frame = directionMap[key];
     if (!frame) return;
 
@@ -221,13 +249,28 @@ export class CharacterMovement {
     const prevTileX = this.tileX;
     const prevTileY = this.tileY;
 
+    const dx = tileX - prevTileX;
+    const dy = tileY - prevTileY;
+
+    const isMoving = dx !== 0 || dy !== 0;
+    const prospectiveFdx = isMoving ? (dx === 0 ? 0 : dx / Math.abs(dx)) : this.facingDx;
+    const prospectiveFdy = isMoving ? (dy === 0 ? 0 : dy / Math.abs(dy)) : this.facingDy;
+
+    if (this.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) {
+      clearSelection();
+      clearArrow();
+      return;
+    }
+
     this.tileX = tileX;
     this.tileY = tileY;
+    this.facingDx = prospectiveFdx;
+    this.facingDy = prospectiveFdy;
 
     const screenPos = tileToScreen(tileX, tileY, this.mapData);
-    this.sprite.position.set(screenPos.x, screenPos.y + this.mapData.tileheight / 2);
-    this.sprite.zIndex = screenPos.y;
-    this.updateSpriteDirection(prevTileX, prevTileY);
+    this.sprite.position.set(screenPos.x, screenPos.y + this.mapData.tileheight / 2 + this.spriteYOffset);
+    this.updateZIndex();
+    this.updateSpriteDirection();
 
     clearSelection();
     clearArrow();
@@ -250,6 +293,79 @@ export class CharacterMovement {
       zones.push({ x: char.tileX, y: char.tileY, radius: char.treeSwapRadius });
     }
     return zones;
+  }
+
+  public getOccupiedTiles(): { tileX: number; tileY: number }[] {
+    const { forward, backward, left, right } = this.footprint;
+    const { facingDx: fdx, facingDy: fdy } = this;
+
+    const rightDx = -fdy;
+    const rightDy =  fdx;
+
+    const tiles = new Map<string, { tileX: number; tileY: number }>();
+
+    const add = (tx: number, ty: number) => {
+      tiles.set(`${tx},${ty}`, { tileX: tx, tileY: ty });
+    };
+
+    for (let f = -backward; f <= forward; f++) {
+      for (let s = -left; s <= right; s++) {
+        const tx = this.tileX + fdx * f + rightDx * s;
+        const ty = this.tileY + fdy * f + rightDy * s;
+        add(tx, ty);
+      }
+    }
+
+    return Array.from(tiles.values());
+  }
+
+  public static getAllOccupiedTiles(): { tileX: number; tileY: number }[] {
+    const result: { tileX: number; tileY: number }[] = [];
+    for (const char of CharacterMovement.allCharacters) {
+      result.push(...char.getOccupiedTiles());
+    }
+    return result;
+  }
+    
+  public static getAllOccupiedTilesExcluding(exclude: CharacterMovement): { tileX: number; tileY: number }[] {
+    const result: { tileX: number; tileY: number }[] = [];
+    for (const char of CharacterMovement.allCharacters) {
+      if (char === exclude) continue;
+      result.push(...char.getOccupiedTiles());
+    }
+    return result;
+  }
+
+  private getProspectiveTiles(
+    toTileX: number,
+    toTileY: number,
+    fdx: number,
+    fdy: number,
+  ): { tileX: number; tileY: number }[] {
+    const { forward, backward, left, right } = this.footprint;
+
+    const rightDx = -fdy;
+    const rightDy =  fdx;
+
+    const tiles = new Map<string, { tileX: number; tileY: number }>();
+
+    for (let f = -backward; f <= forward; f++) {
+      for (let s = -left; s <= right; s++) {
+        const tx = toTileX + fdx * f + rightDx * s;
+        const ty = toTileY + fdy * f + rightDy * s;
+        tiles.set(`${tx},${ty}`, { tileX: tx, tileY: ty });
+      }
+    }
+
+    return Array.from(tiles.values());
+  }
+
+  public wouldCollide(toTileX: number, toTileY: number, prospectiveFdx: number, prospectiveFdy: number): boolean {
+    const prospective = this.getProspectiveTiles(toTileX, toTileY, prospectiveFdx, prospectiveFdy);
+    const otherTiles = CharacterMovement.getAllOccupiedTilesExcluding(this);
+    const otherSet = new Set(otherTiles.map(t => `${t.tileX},${t.tileY}`));
+
+    return prospective.some(t => otherSet.has(`${t.tileX},${t.tileY}`));
   }
 
 }

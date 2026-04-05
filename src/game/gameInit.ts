@@ -41,14 +41,10 @@ export async function initGame() {
   );
 
   const groundTilemap = tilemaps.get('Ground')!;
+
   const objectsContainer = new PIXI.Container();
-  initTrees(objectsContainer, tilesetTextures, mapData);
   objectsContainer.sortableChildren = true;
   objectsContainer.label = 'Objects';
-
-  const clientCharacterContainer = new PIXI.Container();
-  const opponentCharacterContainer = new PIXI.Container();
-  opponentCharacterContainer.visible = false;
 
   const hudContainer = new PIXI.Container();
   const selectionContainer = new PIXI.Container();
@@ -57,8 +53,6 @@ export async function initGame() {
   viewport.addChild(objectsContainer);
   initSelection(selectionContainer);
   initArrow(viewport);
-  viewport.addChild(clientCharacterContainer);
-  viewport.addChild(opponentCharacterContainer);
   viewport.addChild(selectionContainer);
   viewport.addChild(hudContainer);
 
@@ -72,10 +66,10 @@ export async function initGame() {
     return;
   }
 
+  initTrees(objectsContainer, tilesetTextures, mapData);
+
   initTroopSync(
     mapData,
-    clientCharacterContainer,
-    opponentCharacterContainer,
     hudContainer,
     app,
     viewport,
@@ -105,8 +99,6 @@ export async function initGame() {
         viewport,
         mapData,
         tilesetTextures,
-        clientCharacterContainer, 
-        opponentCharacterContainer,
         hudContainer,
         objectsContainer,
         spawnZone,

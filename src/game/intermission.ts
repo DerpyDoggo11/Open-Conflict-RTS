@@ -1,10 +1,14 @@
 import * as PIXI from 'pixi.js';
 import { type TiledMap } from './types/tilemapTypes';
-import { isTileInWalkableBounds, tileToScreen } from './tilemap/tilemapUtils';
-import { spawnCharacter, type TroopType } from './entities/entityUtils';
+import { revealAllEnemies, setIntermissionComplete, spawnCharacter, type TroopType } from './entities/entityUtils';
 import { TimerBanner } from '../overlayUI/components/timerBannerWidget';
 import { ReadyWidget } from '../overlayUI/components/readyWidget';
 import { IntermissionTroopSelectorOverlay } from '../overlayUI/overlays/intermissionTroopSelectorOverlay';
+import {
+  initSpawnZone,
+  spawnSpawnZone,
+  clearSpawnZone,
+} from './entities/selectionUtils';
 import troopDefs from './data/troops.json';
 import { colyseusClient } from './network/colyseusClient';
 import type { CharacterMovement } from './entities/entityMovement';
@@ -18,8 +22,6 @@ const troopDefsArray = Object.entries(troopDefs).map(([key, def]) => ({
 }));
 
 export class Intermission {
-  private spawnZoneSprites: PIXI.Sprite[] = [];
-  private spawnZoneContainer: PIXI.Container;
   private placedCount: number = 0;
   private readonly maxTroops = 4;
   private credits: number = 100;
@@ -52,21 +54,55 @@ export class Intermission {
     private viewport: PIXI.Container,
     private mapData: TiledMap,
     private tilesetTextures: Map<number, PIXI.Texture>,
-    private characterContainer: PIXI.Container,
-    private opponentContainer: PIXI.Container,
     private hudContainer: PIXI.Container,
-    private objectsTilemap: PIXI.Container,
+    private objectsContainer: PIXI.Container,
     private spawnZone: { x: number; y: number; w: number; h: number },
     onComplete: () => void,
   ) {
     this.onComplete = onComplete;
-    this.spawnZoneContainer = new PIXI.Container();
-    viewport.addChild(this.spawnZoneContainer);
 
-    this.spawnSelectionZone();
+    const spawnZoneContainer = new PIXI.Container();
+    viewport.addChild(spawnZoneContainer);
+    initSpawnZone(spawnZoneContainer);
+
     this._buildOverlay();
     this._buildIntermissionSelectorOverlay();
     this._bindServerEvents();
+
+    this._refreshSpawnZone();
+  }
+
+  private _refreshSpawnZone(): void {
+    spawnSpawnZone(
+      this.tilesetTextures,
+      this.spawnZone,
+      SPAWN_GID,
+      this.mapData,
+      (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
+    );
+  }
+
+  private onSpawnTileClick(tileX: number, tileY: number): void {
+    if (this.placedCount >= this.maxTroops) return;
+    this.pendingTile = { tileX, tileY };
+    this.intermissionSelector.open();
+  }
+
+  private async _spawnTroop(type: TroopType, tileX: number, tileY: number): Promise<void> {
+    await spawnCharacter(
+      type, tileX, tileY,
+      this.mapData, this.hudContainer,
+      this.app, this.viewport, this.objectsContainer, this.tilesetTextures,
+      true,
+    );
+
+    this.placedCount++;
+    const remaining = document.getElementById('troops-remaining');
+    if (remaining) {
+      remaining.textContent = `${this.maxTroops - this.placedCount} remaining`;
+    }
+
+    this._refreshSpawnZone();
   }
 
   private _buildIntermissionSelectorOverlay(): void {
@@ -353,72 +389,17 @@ export class Intermission {
     });
   }
 
-  private spawnSelectionZone(): void {
-    const texture = this.tilesetTextures.get(SPAWN_GID);
-    if (!texture) return;
-
-    for (let dx = 0; dx < this.spawnZone.w; dx++) {
-      for (let dy = 0; dy < this.spawnZone.h; dy++) {
-        const tileX = this.spawnZone.x + dx;
-        const tileY = this.spawnZone.y + dy;
-        if (!isTileInWalkableBounds(tileX, tileY, this.mapData)) continue;
-
-        const screenPos = tileToScreen(tileX, tileY, this.mapData);
-        const sprite = new PIXI.Sprite(texture);
-        sprite.anchor.set(0.5, 0.5);
-        sprite.position.set(screenPos.x, screenPos.y);
-        sprite.eventMode = 'static';
-        sprite.cursor = 'pointer';
-
-        sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
-          e.stopPropagation();
-        });
-        sprite.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
-          e.stopPropagation();
-          this.onSpawnTileClick(tileX, tileY);
-        });
-
-        this.spawnZoneContainer.addChild(sprite);
-        this.spawnZoneSprites.push(sprite);
-      }
-    }
-  }
-
-  private onSpawnTileClick(tileX: number, tileY: number): void {
-    if (this.placedCount >= this.maxTroops) return;
-    this.pendingTile = { tileX, tileY };
-    this.intermissionSelector.open();
-  }
-
-  private async _spawnTroop(type: TroopType, tileX: number, tileY: number): Promise<void> {
-    await spawnCharacter(
-      type, tileX, tileY,
-      this.mapData, this.characterContainer, this.hudContainer,
-      this.app, this.viewport, this.objectsTilemap, this.tilesetTextures,
-      true,
-    );
-
-    this.placedCount++;
-    const remaining = document.getElementById('troops-remaining');
-    if (remaining) {
-      remaining.textContent = `${this.maxTroops - this.placedCount} remaining`;
-    }
-  }
-
   private complete(): void {
     if (this._intermissionComplete) return;
     this._intermissionComplete = true;
 
     try {
-      this.opponentContainer.visible = true;
+      setIntermissionComplete();
+      revealAllEnemies(colyseusClient.sessionId);
 
-      for (const s of this.spawnZoneSprites) s.destroy();
-      this.spawnZoneSprites.length = 0;
-      this.spawnZoneContainer.destroy();
-
+      clearSpawnZone();
       this.readyWidget.element.remove();
       this.intermissionSelector.element.remove();
-
       this.timer.setTitleLabel('Game');
     } catch (e) {
       console.error('Intermission error:', e);
