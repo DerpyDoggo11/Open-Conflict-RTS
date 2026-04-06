@@ -3,6 +3,7 @@ import { type TiledMap } from '../types/tilemapTypes';
 import { tileToScreen } from '../tilemap/tilemapUtils';
 import { CharacterMovement, type TroopAnimations } from './entityMovement';
 import troopDefs from '../data/troops.json';
+import actionDefs from '../data/actions.json';
 import { colyseusClient } from '../network/colyseusClient';
 import { TroopHUDController } from '../ui/troopHUDController';
 
@@ -46,6 +47,17 @@ export type TroopType = keyof typeof troopDefs;
 const troopRegistry = new Map<string, CharacterMovement>();
 let intermissionComplete = false;
 
+/** Local team ID, set when we know which team the local player is on */
+let localTeamId = '';
+
+export function setLocalTeamId(teamId: string): void {
+  localTeamId = teamId;
+}
+
+export function getLocalTeamId(): string {
+  return localTeamId;
+}
+
 export function initTroopSync(
   mapData: TiledMap,
   hudContainer: PIXI.Container,
@@ -81,6 +93,23 @@ export function initTroopSync(
     }
   });
 
+  // Handle damage received from server (multi-hit with fireRate)
+  colyseusClient.onTroopDamage((msg) => {
+    const m = troopRegistry.get(msg.id);
+    if (m) {
+      m.health = msg.newHealth;
+      // Trigger health change listeners to update healthbar
+      m.takeDamage(0); // triggers listeners with current health (damage already applied)
+      // Override to the server-authoritative value
+      m.health = msg.newHealth;
+
+      if (m.health <= 0) {
+        m.destroy();
+        troopRegistry.delete(msg.id);
+      }
+    }
+  });
+
   colyseusClient.onTroopDied((id) => {
     const m = troopRegistry.get(id);
     if (m) {
@@ -88,6 +117,23 @@ export function initTroopSync(
       troopRegistry.delete(id);
     }
   });
+}
+
+/**
+ * Get the attack action definition for a troop type.
+ * Returns the first action with type "attack" from the troop's action list.
+ */
+function getAttackAction(type: TroopType): { damage: number; fireRate: number } | null {
+  const def = troopDefs[type] as any;
+  if (!def.actions) return null;
+
+  for (const actionKey of def.actions) {
+    const action = (actionDefs as any)[actionKey];
+    if (action && action.type === 'attack') {
+      return { damage: action.damage ?? 20, fireRate: action.fireRate ?? 1 };
+    }
+  }
+  return null;
 }
 
 export async function spawnCharacter(
@@ -152,6 +198,12 @@ export async function spawnCharacter(
   movement.troopType = type;
   movement.portraitPath = def.portraitPath;
 
+  // Assign team: local troops get the local team, remote troops get detected later
+  // or set by the caller after spawn
+  if (isLocal) {
+    movement.teamId = localTeamId;
+  }
+
   if (isLocal) {
     const troopId = `${colyseusClient.sessionId}_${type}_${tileX}_${tileY}_${Date.now()}`;
     troopRegistry.set(troopId, movement);
@@ -183,7 +235,71 @@ export async function spawnCharacter(
     hudController.deselect();
   };
 
+  // Auto-deselect HUD when this troop dies
+  movement.onHealthChange((hp) => {
+    if (hp <= 0) {
+      hudController.deselect();
+    }
+  });
+
+  // Override openAttack to include damage/fireRate from action definitions
+  // and send attack to server
+  if (isLocal) {
+    const attackAction = getAttackAction(type);
+    if (attackAction) {
+      const originalOpenAttack = movement.openAttack.bind(movement);
+      movement.openAttack = (
+        _onAttackTile?: any,
+        _damage?: number,
+        _fireRate?: number,
+      ) => {
+        originalOpenAttack(
+          (attackerId: string, targetTileX: number, targetTileY: number, damage: number, fireRate: number) => {
+            // Send attack to server with fireRate for multi-hit
+            colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, fireRate);
+
+            // Apply damage locally for immediate feedback
+            const enemy = CharacterMovement.getEnemyAtTile(targetTileX, targetTileY);
+            if (enemy) {
+              applyMultiHitDamage(enemy, damage, fireRate);
+            }
+          },
+          attackAction.damage,
+          attackAction.fireRate,
+        );
+      };
+    }
+  }
+
   return movement;
+}
+
+/**
+ * Apply damage multiple times based on fireRate, with a short delay between hits.
+ */
+function applyMultiHitDamage(target: CharacterMovement, damagePerHit: number, fireRate: number): void {
+  let hitsRemaining = fireRate;
+  const hitInterval = 200; // ms between each hit
+
+  function applyNextHit() {
+    if (hitsRemaining <= 0 || target.health <= 0) return;
+
+    target.takeDamage(damagePerHit);
+    hitsRemaining--;
+
+    if (target.health <= 0) {
+      // Troop is dead — remove from game
+      troopRegistry.delete(target.id);
+      target.destroy();
+      return;
+    }
+
+    if (hitsRemaining > 0) {
+      setTimeout(applyNextHit, hitInterval);
+    }
+  }
+
+  applyNextHit();
 }
 
 export function revealAllEnemies(localSessionId: string): void {
@@ -194,6 +310,34 @@ export function revealAllEnemies(localSessionId: string): void {
 
 export function setIntermissionComplete(): void {
   intermissionComplete = true;
+}
+
+/**
+ * Assign team IDs to all troops in the registry based on playersUpdate data.
+ * Call this when you receive team info from the server.
+ */
+export function assignTeamsToTroops(teams: { teamName: string; players: { id: string; name: string }[] }[]): void {
+  // Build a map of playerId -> teamName
+  const playerTeamMap = new Map<string, string>();
+  for (const team of teams) {
+    for (const player of team.players) {
+      playerTeamMap.set(player.id, team.teamName);
+    }
+  }
+
+  // Set local team
+  const myTeam = playerTeamMap.get(colyseusClient.sessionId);
+  if (myTeam) {
+    setLocalTeamId(myTeam);
+  }
+
+  // Assign teams to all registered troops
+  for (const movement of troopRegistry.values()) {
+    const team = playerTeamMap.get(movement.ownerId);
+    if (team) {
+      movement.teamId = team;
+    }
+  }
 }
 
 async function getTroopAnimations(type: TroopType, spritePath: string): Promise<TroopAnimations> {
@@ -221,11 +365,10 @@ async function progressivelyLoadAnimations(animMap: TroopAnimations, spritePath:
           const tex = await PIXI.Assets.load(url);
           frames.push(tex);
         } catch {
-          break; // First missing frame stops the probe for this clip
+          break;
         }
       }
       
-      // Once a full clip is loaded, inject it into the map
       if (frames.length > 0) {
         dirMap.set(animName, frames);
       }

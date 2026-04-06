@@ -13,18 +13,21 @@
     "label": "Primary",
     "iconPath": "/assets/icons/actionIcons/assaultRifleIcon.png",
     "type": "attack",
-    "damage": 20
+    "damage": 20,
+    "fireRate": 2
   },
   "machineGun": {
     "label": "Primary",
     "iconPath": "/assets/icons/actionIcons/machineGunIcon.png",
     "type": "attack",
-    "damage": 10
+    "damage": 10,
+    "fireRate": 4
   },
   "tankShell": {
     "label": "Primary",
     "iconPath": "/assets/icons/actionIcons/tankShellIcon.png",
     "type": "attack",
-    "damage": 60
+    "damage": 60,
+    "fireRate": 1
   }
 }

@@ -78,6 +78,7 @@ export class CharacterMovement {
   public maxHealth: number = 100;
   public troopType: string = '';
   public portraitPath: string = '';
+  public teamId: string = '';
 
   private healthChangeListeners: ((hp: number) => void)[] = [];
 
@@ -180,12 +181,20 @@ export class CharacterMovement {
     this.isMoving = true;
     const pxPerMs = this.moveSpeed / 1000;
 
-    this.lerpTickerFn = (ticker: PIXI.Ticker) => {
+    // Use time-based lerp so tab-switching doesn't stall movement
+    let lastTime = performance.now();
+
+    this.lerpTickerFn = (_ticker: PIXI.Ticker) => {
       if (!this.targetScreenPos) return;
+
+      const now = performance.now();
+      const elapsed = now - lastTime;
+      lastTime = now;
+
       const dx = this.targetScreenPos.x - this.sprite.x;
       const dy = this.targetScreenPos.y - this.sprite.y;
       const dist = Math.hypot(dx, dy);
-      const step = pxPerMs * ticker.deltaMS;
+      const step = pxPerMs * elapsed;
 
       if (dist <= step) {
         this.sprite.position.set(this.targetScreenPos.x, this.targetScreenPos.y);
@@ -253,6 +262,7 @@ export class CharacterMovement {
       this.lerpTickerFn = null;
     }
     this.sprite.stop();
+    this.sprite.destroy();
     CharacterMovement.allCharacters.delete(this);
     this.clearSelectionTile();
   }
@@ -293,7 +303,11 @@ export class CharacterMovement {
     );
   }
 
-  public openAttack(): void {
+  public openAttack(
+    onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, fireRate: number) => void,
+    damage: number = 20,
+    fireRate: number = 1,
+  ): void {
     clearSelection();
     clearArrow();
     spawnSelectionRadius(
@@ -312,7 +326,9 @@ export class CharacterMovement {
           this.facingDy = Math.sign(dy) as -1 | 0 | 1;
         }
         this.playAnimation('Shoot');
+        onAttackTile?.(this.id, tx, ty, damage, fireRate);
       },
+      true,        // isAttackMode
     );
   }
 
@@ -405,6 +421,30 @@ export class CharacterMovement {
       if (char !== exclude) result.push(...char.getOccupiedTiles());
     }
     return result;
+  }
+
+  /** Get tiles occupied by non-local (enemy) characters */
+  public static getEnemyOccupiedTiles(): { tileX: number; tileY: number; char: CharacterMovement }[] {
+    const result: { tileX: number; tileY: number; char: CharacterMovement }[] = [];
+    for (const char of CharacterMovement.allCharacters) {
+      if (!char.isLocal) {
+        for (const tile of char.getOccupiedTiles()) {
+          result.push({ ...tile, char });
+        }
+      }
+    }
+    return result;
+  }
+
+  /** Find non-local (enemy) character at a given tile */
+  public static getEnemyAtTile(tileX: number, tileY: number): CharacterMovement | null {
+    for (const char of CharacterMovement.allCharacters) {
+      if (char.isLocal) continue;
+      for (const tile of char.getOccupiedTiles()) {
+        if (tile.tileX === tileX && tile.tileY === tileY) return char;
+      }
+    }
+    return null;
   }
 
   private getProspectiveTiles(toTileX: number, toTileY: number, fdx: number, fdy: number) {

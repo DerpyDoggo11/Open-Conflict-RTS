@@ -73,6 +73,11 @@ export function initSelection(container: PIXI.Container): void {
   selectionContainer = container;
 }
 
+/**
+ * Spawn selection radius tiles.
+ *
+ * @param isAttackMode — if true, tiles are only shown where an enemy (non-local) troop stands
+ */
 export function spawnSelectionRadius(
   tilesetTextures: Map<number, PIXI.Texture>,
   centerX: number,
@@ -84,29 +89,40 @@ export function spawnSelectionRadius(
   onHover: (tileX: number, tileY: number) => void,
   onHoverOut: () => void,
   onClick: (tileX: number, tileY: number) => void,
+  isAttackMode: boolean = false,
 ): void {
   clearSelection();
   if (!selectionContainer) return;
 
-  const blockedSet = new Set(
-    CharacterMovement.getAllOccupiedTiles().map(t => `${t.tileX},${t.tileY}`)
-  );
+  // In attack mode, build a set of enemy-occupied tiles
+  let enemyTileSet: Set<string> | null = null;
+  if (isAttackMode) {
+    const enemyTiles = CharacterMovement.getEnemyOccupiedTiles();
+    enemyTileSet = new Set(enemyTiles.map(t => `${t.tileX},${t.tileY}`));
+    console.log('[Attack] Enemy tiles found:', [...enemyTileSet], 'center:', centerX, centerY, 'radius:', radius);
+  }
 
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
       if (Math.abs(dx) + Math.abs(dy) > radius) continue;
       const tileX = centerX + dx;
       const tileY = centerY + dy;
-      if (!isTileInWalkableBounds(tileX, tileY, mapData)) continue;
+      if (!isAttackMode && !isTileInWalkableBounds(tileX, tileY, mapData)) continue;
       if (tileX === centerX && tileY === centerY) continue;
 
-      const ddx = tileX - centerX;
-      const ddy = tileY - centerY;
-      const isMoving = ddx !== 0 || ddy !== 0;
-      const prospectiveFdx = isMoving ? (ddx === 0 ? 0 : ddx / Math.abs(ddx)) : movingCharacter.facingDx;
-      const prospectiveFdy = isMoving ? (ddy === 0 ? 0 : ddy / Math.abs(ddy)) : movingCharacter.facingDy;
+      if (isAttackMode) {
+        // In attack mode, only show tiles where an enemy is standing
+        if (!enemyTileSet!.has(`${tileX},${tileY}`)) continue;
+      } else {
+        // In move mode, skip tiles that would cause collision
+        const ddx = tileX - centerX;
+        const ddy = tileY - centerY;
+        const isMoving = ddx !== 0 || ddy !== 0;
+        const prospectiveFdx = isMoving ? (ddx === 0 ? 0 : ddx / Math.abs(ddx)) : movingCharacter.facingDx;
+        const prospectiveFdy = isMoving ? (ddy === 0 ? 0 : ddy / Math.abs(ddy)) : movingCharacter.facingDy;
 
-      if (movingCharacter.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) continue;
+        if (movingCharacter.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) continue;
+      }
 
       const texture = tilesetTextures.get(tileGid);
       if (!texture) continue;
@@ -117,6 +133,10 @@ export function spawnSelectionRadius(
       sprite.position.set(screenPos.x, screenPos.y);
       sprite.eventMode = 'static';
       sprite.cursor = 'pointer';
+      // In attack mode, render above enemy sprites so clicks hit the tile
+      if (isAttackMode) {
+        sprite.zIndex = 99999;
+      }
 
       sprite.on('pointerenter', () => onHover(tileX, tileY));
       sprite.on('pointerleave', () => onHoverOut());
@@ -231,11 +251,7 @@ export function initTrees(
         const texture = tilesetTextures.get(gid);
         if (!texture) continue;
 
-        // const screenPos = tileToScreen(worldX, worldY, mapData);
         const sprite = new PIXI.Sprite(texture);
-        // sprite.anchor.set(0.5, 1);
-        // sprite.position.set(screenPos.x + mapData.tilewidth / 2, screenPos.y + mapData.tileheight);
-        // sprite.zIndex = worldX + worldY;
         const footTileX = worldX + 1;
         const footTileY = worldY + 1;
         const footScreen = tileToScreen(footTileX, footTileY, mapData);

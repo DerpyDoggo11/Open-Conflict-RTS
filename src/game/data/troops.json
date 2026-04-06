@@ -9,7 +9,7 @@
     "treeSwapRadius": 3,
     "maxHealth": 100,
     "spriteYOffset": 0,
-    "footprintTiles": [{ "dx": 0, "dy": 0 }],
+    "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "repair"],
     "animations": {
       "idle":  { "fps": 8  },
@@ -26,7 +26,7 @@
     "treeSwapRadius": 5,
     "maxHealth": 80,
     "spriteYOffset": 0,
-    "footprintTiles": [{ "dx": 0, "dy": 0 }],
+    "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "rifle"],
     "animations": {
       "idle":  { "fps": 8  },
@@ -44,7 +44,7 @@
     "treeSwapRadius": 5,
     "maxHealth": 80,
     "spriteYOffset": 0,
-    "footprintTiles": [{ "dx": 0, "dy": 0 }],
+    "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "machineGun"],
     "animations": {
       "idle":  { "fps": 8  },
@@ -62,17 +62,11 @@
     "treeSwapRadius": 5,
     "maxHealth": 200,
     "spriteYOffset": 128,
-    "moveDuration": 0.5,
-    "footprint": {
-      "forward": 1,
-      "backward": 0,
-      "left": 0,
-      "right": 0
-    },
+    "footprint": { "forward": 1, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "tankShell"],
     "animations": {
       "idle":  { "fps": 6  },
-      "move":  { "fps": 10 }
+      "move":  { "fps": 12 }
     }
   }
 }
