@@ -4,6 +4,7 @@ export interface TroopAction {
     iconPath: string;
     onClick: () => void;
     disabled?: boolean;
+    cooldown?: number;
 }
 
 export interface TroopHUDOptions {
@@ -11,6 +12,7 @@ export interface TroopHUDOptions {
     name: string;
     maxHealth: number;
     actions: TroopAction[];
+    cooldownSpritePath: string;
 }
 
 export class TroopHUD {
@@ -28,10 +30,18 @@ export class TroopHUD {
     private _currentFrame: number = 0;
     private readonly TOTAL_HEALTH_FRAMES = 63;
 
+    private readonly COOLDOWN_FRAMES = 17;
+    private _cooldownSpritePath: string;
+    private _cooldownTimers: Map<string, number> = new Map();
+    private _coolingDownActions: Set<string> = new Set();
+    private _actionButtons: Map<string, HTMLButtonElement> = new Map();
+    private _cooldownOverlays: Map<string, HTMLElement> = new Map();
+
     constructor(options: TroopHUDOptions) {
         this._currentHealth = options.maxHealth;
         this._maxHealth = options.maxHealth;
         this._actions = options.actions;
+        this._cooldownSpritePath = options.cooldownSpritePath;
 
         this.element = document.createElement('div');
         this.element.className = 'troop-hud';
@@ -99,7 +109,7 @@ export class TroopHUD {
         this._currentHealth = Math.max(0, current);
         if (max !== undefined) this._maxHealth = max;
         const pct = this._maxHealth > 0 ? this._currentHealth / this._maxHealth : 0;
-        const frame = Math.round((1 - pct) * (this.TOTAL_HEALTH_FRAMES - 1));  // ← inverted
+        const frame = Math.round((1 - pct) * (this.TOTAL_HEALTH_FRAMES - 1));
         this._setHealthFrame(frame);
     }
 
@@ -114,7 +124,9 @@ export class TroopHUD {
 
     setActiveAction(actionID: string | null): void {
         this._activeActionID = actionID;
-        this._renderActions();
+        for (const [id, btn] of this._actionButtons) {
+            btn.classList.toggle('troop-hud__action-btn--active', id === actionID);
+        }
     }
 
     setActionDisabled(actionID: string, disabled: boolean): void {
@@ -124,38 +136,154 @@ export class TroopHUD {
         this._renderActions();
     }
 
+    startCooldown(actionId: string): void {
+        const action = this._actions.find(a => a.id === actionId);
+        if (!action || !action.cooldown || action.cooldown <= 0) return;
+
+        this.cancelCooldown(actionId);
+
+        this._coolingDownActions.add(actionId);
+
+        const btn = this._actionButtons.get(actionId);
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('troop-hud__action-btn--disabled');
+        }
+
+        let overlay = this._cooldownOverlays.get(actionId);
+        if (!overlay) return; 
+
+        overlay.style.display = 'block';
+
+        const totalDuration = action.cooldown;
+        const frameDuration = totalDuration / this.COOLDOWN_FRAMES;
+        let currentFrame = 0;
+        const startTime = performance.now();
+
+        const animate = (now: number) => {
+            const elapsed = now - startTime;
+            const newFrame = Math.min(
+                Math.floor(elapsed / frameDuration),
+                this.COOLDOWN_FRAMES - 1
+            );
+
+            if (newFrame !== currentFrame) {
+                currentFrame = newFrame;
+                this._setCooldownFrame(overlay!, currentFrame);
+            }
+
+            if (currentFrame < this.COOLDOWN_FRAMES - 1) {
+                const rafId = requestAnimationFrame(animate);
+                this._cooldownTimers.set(actionId, rafId);
+            } else {
+                this._finishCooldown(actionId);
+            }
+        };
+
+        this._setCooldownFrame(overlay, 0);
+        const rafId = requestAnimationFrame(animate);
+        this._cooldownTimers.set(actionId, rafId);
+    }
+
+    cancelCooldown(actionId: string): void {
+        const rafId = this._cooldownTimers.get(actionId);
+        if (rafId !== undefined) {
+            cancelAnimationFrame(rafId);
+            this._cooldownTimers.delete(actionId);
+        }
+        this._finishCooldown(actionId);
+    }
+
+    isOnCooldown(actionId: string): boolean {
+        return this._coolingDownActions.has(actionId);
+    }
+
+    private _finishCooldown(actionId: string): void {
+        this._coolingDownActions.delete(actionId);
+        this._cooldownTimers.delete(actionId);
+
+        const overlay = this._cooldownOverlays.get(actionId);
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+
+        const action = this._actions.find(a => a.id === actionId);
+        const btn = this._actionButtons.get(actionId);
+        if (btn && action && !action.disabled) {
+            btn.disabled = false;
+            btn.classList.remove('troop-hud__action-btn--disabled');
+        }
+    }
+
+    private _setCooldownFrame(overlay: HTMLElement, frame: number): void {
+        const frameWidth = overlay.clientWidth;
+        if (frameWidth === 0) return;
+        overlay.style.backgroundPositionX = `-${frame * frameWidth}px`;
+    }
+    
     show(): void  { this.element.classList.add('troop-hud--visible'); }
     hide(): void  { this.element.classList.remove('troop-hud--visible'); }
-    destroy(): void { this.element.remove(); }
+
+    destroy(): void {
+        for (const [, rafId] of this._cooldownTimers) {
+            cancelAnimationFrame(rafId);
+        }
+        this._cooldownTimers.clear();
+        this._coolingDownActions.clear();
+        this._actionButtons.clear();
+        this._cooldownOverlays.clear();
+        this.element.remove();
+    }
 
     private _renderActions(): void {
         this._actionsElement.innerHTML = '';
+        this._actionButtons.clear();
+        this._cooldownOverlays.clear();
+
+        const previouslyCooling = new Set(this._coolingDownActions);
 
         for (const action of this._actions) {
+            const isCooling = previouslyCooling.has(action.id);
+
             const btn = document.createElement('button');
             btn.className = [
                 'troop-hud__action-btn',
-                action.disabled ? 'troop-hud__action-btn--disabled' : '',
-                this._activeActionID === action.id ? 'troop-hud__action-btn--active'   : '',
+                (action.disabled || isCooling) ? 'troop-hud__action-btn--disabled' : '',
+                this._activeActionID === action.id ? 'troop-hud__action-btn--active' : '',
             ].filter(Boolean).join(' ');
-            btn.disabled = !!action.disabled;
+            btn.disabled = !!action.disabled || isCooling;
 
             const label = document.createElement('span');
             label.className = 'troop-hud__action-label';
             label.textContent = action.label;
+
+            const iconWrapper = document.createElement('div');
+            iconWrapper.className = 'troop-hud__action-icon-wrapper';
 
             const icon = document.createElement('img');
             icon.className = 'troop-hud__action-icon';
             icon.src = action.iconPath;
             icon.alt = action.label;
 
+            const cooldownOverlay = document.createElement('div');
+            cooldownOverlay.className = 'troop-hud__cooldown-overlay';
+            cooldownOverlay.style.backgroundImage = `url('${this._cooldownSpritePath}')`;
+            cooldownOverlay.style.display = isCooling ? 'block' : 'none';
+
+            iconWrapper.appendChild(icon);
+            iconWrapper.appendChild(cooldownOverlay);
+
             btn.appendChild(label);
-            btn.appendChild(icon);
+            btn.appendChild(iconWrapper);
             btn.addEventListener('click', () => {
-                if (!action.disabled) action.onClick();
+                if (!action.disabled && !this._coolingDownActions.has(action.id)) {
+                    action.onClick();
+                }
             });
 
             this._actionsElement.appendChild(btn);
+            this._actionButtons.set(action.id, btn);
+            this._cooldownOverlays.set(action.id, cooldownOverlay);
         }
     }
 }

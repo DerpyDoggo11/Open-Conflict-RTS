@@ -47,7 +47,6 @@ export type TroopType = keyof typeof troopDefs;
 const troopRegistry = new Map<string, CharacterMovement>();
 let intermissionComplete = false;
 
-/** Local team ID, set when we know which team the local player is on */
 let localTeamId = '';
 
 export function setLocalTeamId(teamId: string): void {
@@ -81,8 +80,8 @@ export function initTroopSync(
     if (intermissionComplete) movement.setVisible(true);
 
     movement.ownerId = msg.ownerId;
-    movement.id      = msg.id;
-    movement.health  = msg.health;
+    movement.id = msg.id;
+    movement.health = msg.health;
     troopRegistry.set(msg.id, movement);
   });
 
@@ -93,14 +92,11 @@ export function initTroopSync(
     }
   });
 
-  // Handle damage received from server (multi-hit with fireRate)
   colyseusClient.onTroopDamage((msg) => {
     const m = troopRegistry.get(msg.id);
     if (m) {
       m.health = msg.newHealth;
-      // Trigger health change listeners to update healthbar
-      m.takeDamage(0); // triggers listeners with current health (damage already applied)
-      // Override to the server-authoritative value
+      m.takeDamage(0); 
       m.health = msg.newHealth;
 
       if (m.health <= 0) {
@@ -119,18 +115,18 @@ export function initTroopSync(
   });
 }
 
-/**
- * Get the attack action definition for a troop type.
- * Returns the first action with type "attack" from the troop's action list.
- */
-function getAttackAction(type: TroopType): { damage: number; fireRate: number } | null {
+function getAttackAction(type: TroopType): { damage: number; shots: number; shotDelay: number } | null {
   const def = troopDefs[type] as any;
   if (!def.actions) return null;
 
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
     if (action && action.type === 'attack') {
-      return { damage: action.damage ?? 20, fireRate: action.fireRate ?? 1 };
+      return {
+        damage: action.damage ?? 20,
+        shots: action.shots ?? 1,
+        shotDelay: action.shotDelay ?? 200,
+      };
     }
   }
   return null;
@@ -180,10 +176,10 @@ export async function spawnCharacter(
     objectsContainer, tilesetTextures, mapData,
     {
       selectionRadius: def.selectionRadius,
-      attackRadius:    def.attackRadius,
-      treeSwapRadius:  def.treeSwapRadius,
-      spritePath:      def.spritePath,
-      spriteYOffset:   yOffset,
+      attackRadius: def.attackRadius,
+      treeSwapRadius: def.treeSwapRadius,
+      spritePath: def.spritePath,
+      spriteYOffset: yOffset,
       footprint: (def as any).footprint ?? { forward: 0, backward: 0, left: 0, right: 0 },
       isLocal,
       animations,
@@ -198,8 +194,6 @@ export async function spawnCharacter(
   movement.troopType = type;
   movement.portraitPath = def.portraitPath;
 
-  // Assign team: local troops get the local team, remote troops get detected later
-  // or set by the caller after spawn
   if (isLocal) {
     movement.teamId = localTeamId;
   }
@@ -235,15 +229,12 @@ export async function spawnCharacter(
     hudController.deselect();
   };
 
-  // Auto-deselect HUD when this troop dies
   movement.onHealthChange((hp) => {
     if (hp <= 0) {
       hudController.deselect();
     }
   });
 
-  // Override openAttack to include damage/fireRate from action definitions
-  // and send attack to server
   if (isLocal) {
     const attackAction = getAttackAction(type);
     if (attackAction) {
@@ -251,21 +242,19 @@ export async function spawnCharacter(
       movement.openAttack = (
         _onAttackTile?: any,
         _damage?: number,
-        _fireRate?: number,
+        _shots?: number,
       ) => {
         originalOpenAttack(
-          (attackerId: string, targetTileX: number, targetTileY: number, damage: number, fireRate: number) => {
-            // Send attack to server with fireRate for multi-hit
-            colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, fireRate);
+          (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => {
+            colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, shots);
 
-            // Apply damage locally for immediate feedback
             const enemy = CharacterMovement.getEnemyAtTile(targetTileX, targetTileY);
             if (enemy) {
-              applyMultiHitDamage(enemy, damage, fireRate);
+              applyMultiHitDamage(enemy, damage, shots, attackAction.shotDelay);
             }
           },
           attackAction.damage,
-          attackAction.fireRate,
+          attackAction.shots,
         );
       };
     }
@@ -274,12 +263,8 @@ export async function spawnCharacter(
   return movement;
 }
 
-/**
- * Apply damage multiple times based on fireRate, with a short delay between hits.
- */
-function applyMultiHitDamage(target: CharacterMovement, damagePerHit: number, fireRate: number): void {
-  let hitsRemaining = fireRate;
-  const hitInterval = 200; // ms between each hit
+function applyMultiHitDamage(target: CharacterMovement, damagePerHit: number, shots: number, shotDelay: number): void {
+  let hitsRemaining = shots;
 
   function applyNextHit() {
     if (hitsRemaining <= 0 || target.health <= 0) return;
@@ -288,14 +273,13 @@ function applyMultiHitDamage(target: CharacterMovement, damagePerHit: number, fi
     hitsRemaining--;
 
     if (target.health <= 0) {
-      // Troop is dead — remove from game
       troopRegistry.delete(target.id);
       target.destroy();
       return;
     }
 
     if (hitsRemaining > 0) {
-      setTimeout(applyNextHit, hitInterval);
+      setTimeout(applyNextHit, shotDelay);
     }
   }
 
@@ -312,12 +296,7 @@ export function setIntermissionComplete(): void {
   intermissionComplete = true;
 }
 
-/**
- * Assign team IDs to all troops in the registry based on playersUpdate data.
- * Call this when you receive team info from the server.
- */
 export function assignTeamsToTroops(teams: { teamName: string; players: { id: string; name: string }[] }[]): void {
-  // Build a map of playerId -> teamName
   const playerTeamMap = new Map<string, string>();
   for (const team of teams) {
     for (const player of team.players) {
@@ -325,13 +304,11 @@ export function assignTeamsToTroops(teams: { teamName: string; players: { id: st
     }
   }
 
-  // Set local team
   const myTeam = playerTeamMap.get(colyseusClient.sessionId);
   if (myTeam) {
     setLocalTeamId(myTeam);
   }
 
-  // Assign teams to all registered troops
   for (const movement of troopRegistry.values()) {
     const team = playerTeamMap.get(movement.ownerId);
     if (team) {

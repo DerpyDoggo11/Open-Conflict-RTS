@@ -181,7 +181,6 @@ export class CharacterMovement {
     this.isMoving = true;
     const pxPerMs = this.moveSpeed / 1000;
 
-    // Use time-based lerp so tab-switching doesn't stall movement
     let lastTime = performance.now();
 
     this.lerpTickerFn = (_ticker: PIXI.Ticker) => {
@@ -304,9 +303,9 @@ export class CharacterMovement {
   }
 
   public openAttack(
-    onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, fireRate: number) => void,
+    onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
     damage: number = 20,
-    fireRate: number = 1,
+    shots: number = 1,
   ): void {
     clearSelection();
     clearArrow();
@@ -326,9 +325,9 @@ export class CharacterMovement {
           this.facingDy = Math.sign(dy) as -1 | 0 | 1;
         }
         this.playAnimation('Shoot');
-        onAttackTile?.(this.id, tx, ty, damage, fireRate);
+        onAttackTile?.(this.id, tx, ty, damage, shots);
       },
-      true,        // isAttackMode
+      true,
     );
   }
 
@@ -423,7 +422,6 @@ export class CharacterMovement {
     return result;
   }
 
-  /** Get tiles occupied by non-local (enemy) characters */
   public static getEnemyOccupiedTiles(): { tileX: number; tileY: number; char: CharacterMovement }[] {
     const result: { tileX: number; tileY: number; char: CharacterMovement }[] = [];
     for (const char of CharacterMovement.allCharacters) {
@@ -436,7 +434,6 @@ export class CharacterMovement {
     return result;
   }
 
-  /** Find non-local (enemy) character at a given tile */
   public static getEnemyAtTile(tileX: number, tileY: number): CharacterMovement | null {
     for (const char of CharacterMovement.allCharacters) {
       if (char.isLocal) continue;

@@ -1,33 +1,41 @@
 {
   "move": {
     "label": "Move",
-    "iconPath": "/assets/icons/actionIcons/moveIcon.png",
-    "type": "move"
+    "iconPath": "/assets/actions/move/icon.png",
+    "type": "move",
+    "cooldown": 2000
   },
   "repair": {
     "label": "Repair",
-    "iconPath": "/assets/icons/actionIcons/repairIcon.png",
-    "type": "repair"
+    "iconPath": "/assets/actions/repair/icon.png",
+    "type": "repair",
+    "cooldown": 5000
   },
   "rifle": {
     "label": "Primary",
-    "iconPath": "/assets/icons/actionIcons/assaultRifleIcon.png",
+    "iconPath": "/assets/actions/rifle/icon.png",
     "type": "attack",
     "damage": 20,
-    "fireRate": 2
+    "shots": 3,
+    "shotDelay": 700,
+    "cooldown": 3000
   },
   "machineGun": {
     "label": "Primary",
-    "iconPath": "/assets/icons/actionIcons/machineGunIcon.png",
+    "iconPath": "/assets/actions/machineGun/icon.png",
     "type": "attack",
     "damage": 10,
-    "fireRate": 4
+    "shots": 6,
+    "shotDelay": 500,
+    "cooldown": 2500
   },
   "tankShell": {
     "label": "Primary",
-    "iconPath": "/assets/icons/actionIcons/tankShellIcon.png",
+    "iconPath": "/assets/actions/cannon/icon.png",
     "type": "attack",
     "damage": 60,
-    "fireRate": 1
+    "shots": 1,
+    "shotDelay": 0,
+    "cooldown": 6000
   }
 }

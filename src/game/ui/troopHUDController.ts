@@ -4,17 +4,18 @@ import { clearSelection, clearArrow } from '../entities/selectionUtils';
 import { colyseusClient } from '../network/colyseusClient';
 import type { CharacterMovement } from '../entities/entityMovement';
 import type { TiledMap } from '../types/tilemapTypes';
-import { CompositeTilemap } from '@pixi/tilemap';
 import actionDefs from '../data/actions.json';
 import troopDefs from '../data/troops.json';
 
-type ActionType = 'move' | 'attack';
+type ActionType = 'move' | 'attack' | 'repair';
 
 interface ActionDef {
   label: string;
   iconPath: string;
   type: ActionType;
   damage?: number;
+  fireRate?: number;
+  cooldown?: number;
 }
 
 export type ActionMode = 'idle' | 'move' | 'attack';
@@ -42,7 +43,14 @@ export class TroopHUDController {
         this._justSelected = false;
         return;
       }
-      if (this.mode === 'idle') this.deselect();
+
+      if (this.mode !== 'idle') {
+        this._exitMode();
+        this.deselect();
+        return;
+      }
+
+      this.deselect();
     });
   }
 
@@ -63,10 +71,13 @@ export class TroopHUDController {
         id: actionId,
         label: actionDef.label,
         iconPath: actionDef.iconPath,
+        cooldown: actionDef.cooldown ?? 0,
         disabled: false,
         onClick: () => {
+          if (this.hud?.isOnCooldown(actionId)) return;
+
           if (actionDef.type === 'move') {
-            this._toggleMove();
+            this._toggleMove(actionId);
           } else if (actionDef.type === 'attack') {
             this._toggleAttack(actionId, actionDef.damage ?? 0);
           }
@@ -79,6 +90,7 @@ export class TroopHUDController {
       name: character.troopType,
       maxHealth: character.maxHealth,
       actions,
+      cooldownSpritePath: "/assets/ui/iconCooldown.png",
     });
     
     document.getElementById('app')!.appendChild(this.hud.element);
@@ -102,7 +114,7 @@ export class TroopHUDController {
     setTimeout(() => { this.hud?.destroy(); this.hud = null; }, 160);
   }
 
-  private _toggleMove(): void {
+  private _toggleMove(actionId: string = 'move'): void {
     if (!this.selected) return;
 
     if (this.mode === 'move') {
@@ -112,17 +124,18 @@ export class TroopHUDController {
 
     this._exitMode();
     this.mode = 'move';
-    this.hud?.setActiveAction('move');
+    this.hud?.setActiveAction(actionId);
 
     const originalMoveTo = this.selected.moveTo.bind(this.selected);
     this.selected.moveTo = (tx: number, ty: number) => {
       originalMoveTo(tx, ty);
       this._exitMode();
+      this.hud?.startCooldown(actionId);
     };
 
     this.selected.openMove();
   }
-
+    
   private _toggleAttack(actionId: string, damage: number): void {
     if (!this.selected) return;
 
@@ -137,7 +150,27 @@ export class TroopHUDController {
     this._activeAttackActionId = actionId;
     this.hud?.setActiveAction(actionId);
 
-    this.selected.openAttack();
+    const capturedActionId = actionId;
+    const hudRef = this.hud;
+    const selected = this.selected;
+
+    const originalOpenAttack = selected.openAttack.bind(selected);
+    const originalClose = selected.close;
+
+    const self = this;
+    selected.openAttack(
+      undefined,
+      damage,
+    );
+
+    const origPlayAnim = selected.playAnimation.bind(selected);
+    selected.playAnimation = (animName: string, onComplete?: () => void) => {
+      origPlayAnim(animName, onComplete);
+      if (animName === 'Shoot') {
+        hudRef?.startCooldown(capturedActionId);
+        selected.playAnimation = origPlayAnim;
+      }
+    };
   }
 
   private _exitMode(): void {

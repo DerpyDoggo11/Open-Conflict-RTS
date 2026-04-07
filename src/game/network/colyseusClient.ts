@@ -135,9 +135,8 @@ export class ColyseusClient {
     this.room?.send("attackTroop", { attackerId, targetId, damage });
   }
 
-  /** Send attack on a tile with fireRate (number of hits) */
-  sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number, fireRate: number = 1): void {
-    this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, fireRate });
+  sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number = 1): void {
+    this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, shots });
   }
 
   onReadyStateChange(fn: (readyCount: number, totalCount: number) => void): void {
