@@ -6,11 +6,14 @@ import troopDefs from '../data/troops.json';
 import actionDefs from '../data/actions.json';
 import { colyseusClient } from '../network/colyseusClient';
 import { TroopHUDController } from '../ui/troopHUDController';
+import { ProjectileManager } from './projectileManager';
 
 
 const ANIM_CLIP_NAMES = ['Idle', 'Move', 'Shoot'] as const;
 const MAX_FRAMES = 12;
 const animationCache = new Map<string, TroopAnimations>();
+
+let projectileManager: ProjectileManager | null = null;
 
 async function loadTroopAnimations(spritePath: string): Promise<TroopAnimations> {
   const animations: TroopAnimations = new Map();
@@ -66,6 +69,11 @@ export function initTroopSync(
   tilesetTextures: Map<number, PIXI.Texture>,
 ): void {
 
+  if (!projectileManager) {
+    objectsContainer.sortableChildren = true;
+    projectileManager = new ProjectileManager(app, objectsContainer);
+  }
+
   colyseusClient.onTroopSpawn(async (msg) => {
     if (msg.ownerId === colyseusClient.sessionId) return;
 
@@ -93,18 +101,43 @@ export function initTroopSync(
   });
 
   colyseusClient.onTroopDamage((msg) => {
-    const m = troopRegistry.get(msg.id);
-    if (m) {
-      m.health = msg.newHealth;
-      m.takeDamage(0); 
-      m.health = msg.newHealth;
+      const m = troopRegistry.get(msg.id);
+      if (m) {
+        const attacker = troopRegistry.get(msg.attackerId);
+        if (attacker && attacker.ownerId !== colyseusClient.sessionId && projectileManager) {
+          const action = getActionForTroop(attacker.troopType, 'attack');
+          if (action?.projectilePath) {
+            const targetScreenPos = tileToScreen(m.tileX, m.tileY, mapData);
+            const targetY = targetScreenPos.y + mapData.tileheight / 2 + ((troopDefs as any)[m.troopType]?.spriteYOffset ?? 0);
+            projectileManager.spawn({
+              texturePath: action.projectilePath,
+              startX: attacker.sprite.x,
+              startY: attacker.sprite.y - (attacker.sprite.height / 2),
+              endX: targetScreenPos.x,
+              endY: targetY - (m.sprite.height / 2),
+              onImpact: () => {
+                m.health = msg.newHealth;
+                m.takeDamage(0);
+                m.health = msg.newHealth;
+                if (m.health <= 0) {
+                  m.destroy();
+                  troopRegistry.delete(msg.id);
+                }
+              },
+            });
+            return;
+          }
+        }
 
-      if (m.health <= 0) {
-        m.destroy();
-        troopRegistry.delete(msg.id);
+        m.health = msg.newHealth;
+        m.takeDamage(0);
+        m.health = msg.newHealth;
+        if (m.health <= 0) {
+          m.destroy();
+          troopRegistry.delete(msg.id);
+        }
       }
-    }
-  });
+    });
 
   colyseusClient.onTroopDied((id) => {
     const m = troopRegistry.get(id);
@@ -115,7 +148,7 @@ export function initTroopSync(
   });
 }
 
-function getAttackAction(type: TroopType): { damage: number; shots: number; shotDelay: number } | null {
+function getAttackAction(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string } | null {
   const def = troopDefs[type] as any;
   if (!def.actions) return null;
 
@@ -126,6 +159,7 @@ function getAttackAction(type: TroopType): { damage: number; shots: number; shot
         damage: action.damage ?? 20,
         shots: action.shots ?? 1,
         shotDelay: action.shotDelay ?? 200,
+        projectilePath: action.projectilePath,
       };
     }
   }
@@ -250,7 +284,15 @@ export async function spawnCharacter(
 
             const enemy = CharacterMovement.getEnemyAtTile(targetTileX, targetTileY);
             if (enemy) {
-              applyMultiHitDamage(enemy, damage, shots, attackAction.shotDelay);
+              applyMultiHitDamage(
+                movement,
+                enemy,
+                damage,
+                shots,
+                attackAction.shotDelay,
+                attackAction.projectilePath,
+                mapData,
+              );
             }
           },
           attackAction.damage,
@@ -263,27 +305,48 @@ export async function spawnCharacter(
   return movement;
 }
 
-function applyMultiHitDamage(target: CharacterMovement, damagePerHit: number, shots: number, shotDelay: number): void {
-  let hitsRemaining = shots;
+function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovement, damagePerHit: number, shots: number, shotDelay: number, projectilePath: string | undefined, mapData: TiledMap): void {
+  if (projectilePath && projectileManager) {
+    const targetScreenPos = tileToScreen(target.tileX, target.tileY, mapData);
+    const targetYOffset = ((troopDefs as any)[target.troopType]?.spriteYOffset ?? 0);
+    const targetY = targetScreenPos.y + mapData.tileheight / 2 + targetYOffset;
 
-  function applyNextHit() {
-    if (hitsRemaining <= 0 || target.health <= 0) return;
-
-    target.takeDamage(damagePerHit);
-    hitsRemaining--;
-
-    if (target.health <= 0) {
-      troopRegistry.delete(target.id);
-      target.destroy();
-      return;
+    projectileManager.spawnBurst(
+      projectilePath,
+      attacker.sprite.x,
+      attacker.sprite.y - (attacker.sprite.height / 2),
+      targetScreenPos.x,
+      targetY - (target.sprite.height / 2),
+      shots,
+      shotDelay,
+      undefined,
+      undefined,
+      (_shotIndex) => {
+        if (target.health <= 0) return;
+        target.takeDamage(damagePerHit);
+        if (target.health <= 0) {
+          troopRegistry.delete(target.id);
+          target.destroy();
+        }
+      },
+    );
+  } else {
+    let hitsRemaining = shots;
+    function applyNextHit() {
+      if (hitsRemaining <= 0 || target.health <= 0) return;
+      target.takeDamage(damagePerHit);
+      hitsRemaining--;
+      if (target.health <= 0) {
+        troopRegistry.delete(target.id);
+        target.destroy();
+        return;
+      }
+      if (hitsRemaining > 0) {
+        setTimeout(applyNextHit, shotDelay);
+      }
     }
-
-    if (hitsRemaining > 0) {
-      setTimeout(applyNextHit, shotDelay);
-    }
+    applyNextHit();
   }
-
-  applyNextHit();
 }
 
 export function revealAllEnemies(localSessionId: string): void {
@@ -379,4 +442,14 @@ export async function preloadAllTroopAssets(): Promise<void> {
   }));
 
   console.log('[entityUtils] Fast-preload complete, background loading started.');
+}
+
+function getActionForTroop(type: string, actionType: string): any | null {
+  const def = (troopDefs as any)[type];
+  if (!def?.actions) return null;
+  for (const actionKey of def.actions) {
+    const action = (actionDefs as any)[actionKey];
+    if (action && action.type === actionType) return action;
+  }
+  return null;
 }

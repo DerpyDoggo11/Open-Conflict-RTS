@@ -18,7 +18,8 @@
     "damage": 20,
     "shots": 3,
     "shotDelay": 700,
-    "cooldown": 3000
+    "cooldown": 3000,
+    "projectilePath": "/assets/actions/misc/bullet.png"
   },
   "machineGun": {
     "label": "Primary",
@@ -27,7 +28,8 @@
     "damage": 10,
     "shots": 6,
     "shotDelay": 500,
-    "cooldown": 2500
+    "cooldown": 2500,
+    "projectilePath": "/assets/actions/misc/bullet.png"
   },
   "tankShell": {
     "label": "Primary",
@@ -36,6 +38,7 @@
     "damage": 60,
     "shots": 1,
     "shotDelay": 0,
-    "cooldown": 6000
+    "cooldown": 6000,
+    "projectilePath": "/assets/actions/misc/heavyBullet.png"
   }
 }
