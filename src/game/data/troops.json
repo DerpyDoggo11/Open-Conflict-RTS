@@ -8,7 +8,7 @@
     "attackRadius": 4,
     "treeSwapRadius": 3,
     "maxHealth": 100,
-    "spriteYOffset": 0,
+    "spriteYOffset": -16,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "repair"]
   },
@@ -21,7 +21,7 @@
     "attackRadius": 3,
     "treeSwapRadius": 5,
     "maxHealth": 80,
-    "spriteYOffset": 0,
+    "spriteYOffset": -16,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "rifle"]
   },
@@ -34,7 +34,7 @@
     "attackRadius": 4,
     "treeSwapRadius": 5,
     "maxHealth": 80,
-    "spriteYOffset": 0,
+    "spriteYOffset": -16,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "actions": ["move", "machineGun"]
   },

@@ -61,10 +61,8 @@ export class Intermission {
   ) {
     this.onComplete = onComplete;
 
-    const spawnZoneContainer = new PIXI.Container();
-    viewport.addChild(spawnZoneContainer);
-    initSpawnZone(spawnZoneContainer);
-
+    initSpawnZone(objectsContainer);
+    
     this._buildOverlay();
     this._buildIntermissionSelectorOverlay();
     this._bindServerEvents();

@@ -162,15 +162,6 @@ export class TroopHUDController {
       undefined,
       damage,
     );
-
-    const origPlayAnim = selected.playAnimation.bind(selected);
-    selected.playAnimation = (animName: string, onComplete?: () => void) => {
-      origPlayAnim(animName, onComplete);
-      if (animName === 'Shoot') {
-        hudRef?.startCooldown(capturedActionId);
-        selected.playAnimation = origPlayAnim;
-      }
-    };
   }
 
   private _exitMode(): void {

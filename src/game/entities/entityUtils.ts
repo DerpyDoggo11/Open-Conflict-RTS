@@ -7,6 +7,7 @@ import actionDefs from '../data/actions.json';
 import { colyseusClient } from '../network/colyseusClient';
 import { TroopHUDController } from '../ui/troopHUDController';
 import { ProjectileManager } from './projectileManager';
+import { FloatingHealthBar } from './floatingHealthBar';
 
 /**
  * Direction layout for 3×3 grid spritesheets:
@@ -205,6 +206,7 @@ export function initTroopSync(
               m.health = msg.newHealth;
               m.takeDamage(0);
               m.health = msg.newHealth;
+              m.floatingHealthBar?.setHealth(m.health);
               if (m.health <= 0) {
                 m.destroy();
                 troopRegistry.delete(msg.id);
@@ -218,6 +220,7 @@ export function initTroopSync(
       m.health = msg.newHealth;
       m.takeDamage(0);
       m.health = msg.newHealth;
+      m.floatingHealthBar?.setHealth(m.health);
       if (m.health <= 0) {
         m.destroy();
         troopRegistry.delete(msg.id);
@@ -342,6 +345,14 @@ export async function spawnCharacter(
   movement.troopType = type;
   movement.portraitPath = def.portraitPath;
 
+  if (!isLocal) {
+    const bar = new FloatingHealthBar(
+      app, objectsContainer, sprite, def.maxHealth,
+      '/assets/ui/healthBar.png',
+    );
+    movement.floatingHealthBar = bar;
+  }
+
   if (isLocal) {
     movement.teamId = localTeamId;
   }
@@ -438,6 +449,7 @@ function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovem
       (_shotIndex) => {
         if (target.health <= 0) return;
         target.takeDamage(damagePerHit);
+        target.floatingHealthBar?.setHealth(target.health);
         if (target.health <= 0) {
           troopRegistry.delete(target.id);
           target.destroy();

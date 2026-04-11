@@ -6,6 +6,7 @@ import {
   spawnSelectionRadius, updateTreeTransparency,
   getMapGids,
 } from './selectionUtils';
+import type { FloatingHealthBar } from './floatingHealthBar';
 
 const FACING_TO_DIR: Record<string, number> = {
   '0,1':  1,
@@ -17,18 +18,6 @@ const FACING_TO_DIR: Record<string, number> = {
   '-1,0':   7, 
   '1,1':  8, 
 };
-
-
-// const FACING_TO_DIR: Record<string, number> = {
-//   '0,1':  1,
-//   '-1,1': 2, 
-//   '0,-1':  3, 
-//   '-1,-1':  4,   // doesnt work
-//   '1,0':   5, 
-//   '1,-1':   6,   
-//   '-1,0':   7, 
-//   '1,1':  8, 
-// };
 
 export type TroopTextures = Map<number, { idle: PIXI.Texture; shoot?: PIXI.Texture }>;
 
@@ -57,6 +46,7 @@ export class CharacterMovement {
   public isSelected: boolean = false;
   public facingDx: number = 1;
   public facingDy: number = 1;
+  public floatingHealthBar: FloatingHealthBar | null = null;
 
   private objectsTilemap: PIXI.Container;
   private tilesetTextures: Map<number, PIXI.Texture>;
@@ -246,7 +236,7 @@ export class CharacterMovement {
       CharacterMovement.activeViewport = this.viewport;
       CharacterMovement.activeMapData = this.mapData;
       this.viewport.eventMode = 'static';
-      this.viewport.on('pointerup', CharacterMovement.onSharedPointerUp);
+      this.viewport.on('pointertap', CharacterMovement.onSharedPointerUp);
       this.viewport.on('pointermove', CharacterMovement.onSharedPointerMove);
       CharacterMovement.viewportBound = true;
     }
@@ -290,6 +280,8 @@ export class CharacterMovement {
       clearTimeout(this.shootTimer);
       this.shootTimer = null;
     }
+    this.floatingHealthBar?.destroy();
+    this.floatingHealthBar = null;
     this.sprite.destroy();
     CharacterMovement.allCharacters.delete(this);
     this.clearSelectionTile();
@@ -329,35 +321,51 @@ export class CharacterMovement {
       (tx, ty) => { this.moveTo(tx, ty); },
     );
   }
+public openAttack(
+  onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
+  damage: number = 20,
+  shots: number = 1,
+): void {
+  clearSelection();
+  clearArrow();
 
-  public openAttack(
-    onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
-    damage: number = 20,
-    shots: number = 1,
-  ): void {
-    clearSelection();
-    clearArrow();
-    spawnSelectionRadius(
-      this.tilesetTextures, this.tileX, this.tileY,
-      this.attackRadius, this.attackGid, this.attackGidTransparent,
-      this.mapData, this,
-      (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
-      () => clearArrow(),
-      (tx, ty) => {
-        clearSelection();
-        clearArrow();
-        const dx = tx - this.tileX;
-        const dy = ty - this.tileY;
-        if (dx !== 0 || dy !== 0) {
-          this.facingDx = Math.sign(dx) as -1 | 0 | 1;
-          this.facingDy = Math.sign(dy) as -1 | 0 | 1;
-        }
-        this.playShoot();
-        onAttackTile?.(this.id, tx, ty, damage, shots);
-      },
-      true,
-    );
-  }
+  const totalDamage = damage * shots;
+
+  spawnSelectionRadius(
+    this.tilesetTextures, this.tileX, this.tileY,
+    this.attackRadius, this.attackGid, this.attackGidTransparent,
+    this.mapData, this,
+    (tx, ty) => {
+      drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData);
+      const enemy = CharacterMovement.getEnemyAtTile(tx, ty);
+      if (enemy?.floatingHealthBar) {
+        enemy.floatingHealthBar.showDamagePreview(totalDamage);
+      }
+    },
+    () => {
+      clearArrow();
+      for (const char of CharacterMovement.allCharacters) {
+        if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
+      }
+    },
+    (tx, ty) => {
+      clearSelection();
+      clearArrow();
+      for (const char of CharacterMovement.allCharacters) {
+        if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
+      }
+      const dx = tx - this.tileX;
+      const dy = ty - this.tileY;
+      if (dx !== 0 || dy !== 0) {
+        this.facingDx = Math.sign(dx) as -1 | 0 | 1;
+        this.facingDy = Math.sign(dy) as -1 | 0 | 1;
+      }
+      this.playShoot();
+      onAttackTile?.(this.id, tx, ty, damage, shots);
+    },
+    true,
+  );
+}
 
   public close(): void {
     clearSelection();

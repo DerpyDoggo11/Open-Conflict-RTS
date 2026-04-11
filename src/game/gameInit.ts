@@ -5,7 +5,7 @@ import { initTroopSync, preloadAllTroopAssets, spawnCharacter } from './entities
 import { setupCamera } from './entities/camera';
 import {
   clearArrow, clearSelection, drawArrowToTile,
-  initArrow, initGrid, initMapGids, initSelection, initTrees, spawnSelectionRadius
+  initArrow, initGrid, initMapGids, initSelection, initTileInput, initTrees, spawnSelectionRadius
 } from './entities/selectionUtils';
 import { colyseusClient } from './network/colyseusClient';
 import { Intermission } from './intermission';
@@ -23,7 +23,7 @@ export async function initGame() {
 
   const params = new URLSearchParams(window.location.search);
   const playerName = localStorage.getItem('playerName') ?? 'Player';
-  const map = params.get('map') ?? 'grasslands';
+  const map = params.get('map') || 'isle';
 
   const app = new PIXI.Application();
   const appContainer = document.getElementById('app') as HTMLElement;
@@ -39,7 +39,7 @@ export async function initGame() {
   app.stage.addChild(viewport);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
-    './assets/tilemaps/isle/isle.json'
+    `./assets/tilemaps/${map}/${map}.json`
   );
 
   initMapGids(mapData);
@@ -52,22 +52,19 @@ export async function initGame() {
   objectsContainer.label = 'Objects';
 
   const hudContainer = new PIXI.Container();
-  const selectionContainer = new PIXI.Container();
 
   viewport.addChild(groundTilemap);
-  viewport.addChild(objectsContainer);
-  initSelection(selectionContainer);
   initArrow(viewport);
-  viewport.addChild(selectionContainer);
+  viewport.addChild(objectsContainer);
+  initSelection(objectsContainer);
   viewport.addChild(hudContainer);
-  // createOceanMesh(app, viewport, mapData);
 
   try {
     await preloadAllTroopAssets();
   } catch (e) {
     console.error('[initGame] Failed to preload troop assets:', e);
   }
-
+  
   try {
     await colyseusClient.joinGame(playerName);
     console.log('[initGame] joined game as', playerName);
@@ -87,11 +84,11 @@ export async function initGame() {
     tilesetTextures
   );
 
-  // Set up camera with smooth controls
   viewport.pivot.set(0, 0);
   viewport.position.set(app.screen.width / 2, app.screen.height / 2);
   viewport.scale.set(0.5, 0.5);
 
+  initTileInput(app, viewport, mapData);
   const camera = setupCamera(app, viewport);
 
   let intermission: Intermission | null = null;

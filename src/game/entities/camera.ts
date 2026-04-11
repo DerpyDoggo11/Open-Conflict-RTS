@@ -81,7 +81,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
       dragVelocityY = 0;
     }
 
-    // Smooth zoom + keep anchor point fixed on screen
     const scaleDiff = targetScale - viewport.scale.x;
     if (Math.abs(scaleDiff) > 0.0005) {
       const newScale = viewport.scale.x + scaleDiff * zoomSmoothing;

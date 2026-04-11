@@ -136,7 +136,7 @@ export class ColyseusClient {
   }
 
   sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number = 1): void {
-    this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, shots });
+    this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, fireRate: shots });
   }
 
   onReadyStateChange(fn: (readyCount: number, totalCount: number) => void): void {
