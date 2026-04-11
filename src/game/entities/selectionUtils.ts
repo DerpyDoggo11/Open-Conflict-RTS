@@ -3,9 +3,19 @@ import { CompositeTilemap } from '@pixi/tilemap';
 import { type TiledMap } from '../types/tilemapTypes';
 import { isTileInWalkableBounds, tileToScreen } from '../tilemap/tilemapUtils';
 import { CharacterMovement } from './entityMovement';
+import { resolveMapGids, type MapGids } from '../tilemap/tilesetLookup';
 
-const TREE_GID = 2;
-const TRANSPARENT_TREE_GID = 4;
+let mapGids: MapGids | null = null;
+
+export function initMapGids(mapData: TiledMap): void {
+  mapGids = resolveMapGids(mapData);
+  console.log('[selectionUtils] Resolved GIDs:', mapGids);
+}
+
+export function getMapGids(): MapGids {
+  if (!mapGids) throw new Error('initMapGids must be called before using GIDs');
+  return mapGids;
+}
 
 let arrowGraphics: PIXI.Graphics | null = null;
 
@@ -66,6 +76,60 @@ export function clearArrow(): void {
   arrowGraphics?.clear();
 }
 
+/* ── Grid overlay ── */
+
+let gridGraphics: PIXI.Graphics | null = null;
+
+export function initGrid(viewport: PIXI.Container, mapData: TiledMap): void {
+  if (gridGraphics) {
+    gridGraphics.destroy();
+  }
+  gridGraphics = new PIXI.Graphics();
+  gridGraphics.zIndex = -1;
+  viewport.addChild(gridGraphics);
+  drawGrid(mapData);
+}
+
+function drawGrid(mapData: TiledMap): void {
+  if (!gridGraphics) return;
+  gridGraphics.clear();
+
+  const hw = mapData.tilewidth / 2;
+  const hh = mapData.tileheight / 2;
+
+  const groundLayer = mapData.layers.find(l => l.name === 'Ground');
+  if (!groundLayer?.chunks) return;
+
+  const tileSet = new Set<string>();
+  for (const chunk of groundLayer.chunks) {
+    for (let i = 0; i < chunk.data.length; i++) {
+      if (chunk.data[i] === 0) continue;
+      const lx = i % chunk.width;
+      const ly = Math.floor(i / chunk.width);
+      tileSet.add(`${chunk.x + lx},${chunk.y + ly}`);
+    }
+  }
+
+  for (const key of tileSet) {
+    const [txStr, tyStr] = key.split(',');
+    const tx = parseInt(txStr, 10);
+    const ty = parseInt(tyStr, 10);
+
+    const cx = (tx - ty) * hw;
+    const cy = (tx + ty) * hh;
+
+    gridGraphics
+      .moveTo(cx, cy - hh)
+      .lineTo(cx + hw, cy)
+      .lineTo(cx, cy + hh)
+      .lineTo(cx - hw, cy)
+      .closePath()
+      .stroke({ width: 1, color: 0xffffff, alpha: 0.08 });
+  }
+}
+
+/* ── Selection radius ── */
+
 const selectionSprites: PIXI.Sprite[] = [];
 let selectionContainer: PIXI.Container | null = null;
 
@@ -79,6 +143,7 @@ export function spawnSelectionRadius(
   centerY: number,
   radius: number,
   tileGid: number,
+  tileGidTransparent: number,
   mapData: TiledMap,
   movingCharacter: CharacterMovement,
   onHover: (tileX: number, tileY: number) => void,
@@ -89,12 +154,9 @@ export function spawnSelectionRadius(
   clearSelection();
   if (!selectionContainer) return;
 
-  // let enemyTileSet: Set<string> | null = null;
-  // if (isAttackMode) {
-  //   const enemyTiles = CharacterMovement.getEnemyOccupiedTiles();
-  //   enemyTileSet = new Set(enemyTiles.map(t => `${t.tileX},${t.tileY}`));
-  //   console.log('[Attack] Enemy tiles found:', [...enemyTileSet], 'center:', centerX, centerY, 'radius:', radius);
-  // }
+  const opaqueTexture = tilesetTextures.get(tileGid);
+  const transparentTexture = tilesetTextures.get(tileGidTransparent) ?? opaqueTexture;
+  if (!transparentTexture) return;
 
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
@@ -105,7 +167,7 @@ export function spawnSelectionRadius(
       if (tileX === centerX && tileY === centerY) continue;
 
       if (isAttackMode) {
-        // if (!enemyTileSet!.has(`${tileX},${tileY}`)) continue;
+        // show all tiles in attack range
       } else {
         const ddx = tileX - centerX;
         const ddy = tileY - centerY;
@@ -116,11 +178,8 @@ export function spawnSelectionRadius(
         if (movingCharacter.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) continue;
       }
 
-      const texture = tilesetTextures.get(tileGid);
-      if (!texture) continue;
-
       const screenPos = tileToScreen(tileX, tileY, mapData);
-      const sprite = new PIXI.Sprite(texture);
+      const sprite = new PIXI.Sprite(transparentTexture);
       sprite.anchor.set(0.5, 0.5);
       sprite.position.set(screenPos.x, screenPos.y);
       sprite.eventMode = 'static';
@@ -130,8 +189,14 @@ export function spawnSelectionRadius(
         sprite.zIndex = 99999;
       }
 
-      sprite.on('pointerenter', () => onHover(tileX, tileY));
-      sprite.on('pointerleave', () => onHoverOut());
+      sprite.on('pointerenter', () => {
+        if (opaqueTexture) sprite.texture = opaqueTexture;
+        onHover(tileX, tileY);
+      });
+      sprite.on('pointerleave', () => {
+        sprite.texture = transparentTexture;
+        onHoverOut();
+      });
       sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
         e.stopPropagation();
       });
@@ -153,6 +218,8 @@ export function clearSelection(): void {
   selectionSprites.length = 0;
 }
 
+/* ── Spawn zone ── */
+
 const spawnZoneSprites: PIXI.Sprite[] = [];
 let spawnZoneContainer: PIXI.Container | null = null;
 
@@ -164,14 +231,16 @@ export function spawnSpawnZone(
   tilesetTextures: Map<number, PIXI.Texture>,
   spawnZone: { x: number; y: number; w: number; h: number },
   spawnGid: number,
+  spawnGidTransparent: number,
   mapData: TiledMap,
   onClick: (tileX: number, tileY: number) => void,
 ): void {
   clearSpawnZone();
   if (!spawnZoneContainer) return;
 
-  const texture = tilesetTextures.get(spawnGid);
-  if (!texture) return;
+  const opaqueTexture = tilesetTextures.get(spawnGid);
+  const transparentTexture = tilesetTextures.get(spawnGidTransparent) ?? opaqueTexture;
+  if (!transparentTexture) return;
 
   const blockedSet = new Set(
     CharacterMovement.getAllOccupiedTiles().map(t => `${t.tileX},${t.tileY}`)
@@ -186,12 +255,18 @@ export function spawnSpawnZone(
       if (blockedSet.has(`${tileX},${tileY}`)) continue;
 
       const screenPos = tileToScreen(tileX, tileY, mapData);
-      const sprite = new PIXI.Sprite(texture);
+      const sprite = new PIXI.Sprite(transparentTexture);
       sprite.anchor.set(0.5, 0.5);
       sprite.position.set(screenPos.x, screenPos.y);
       sprite.eventMode = 'static';
       sprite.cursor = 'pointer';
 
+      sprite.on('pointerenter', () => {
+        if (opaqueTexture) sprite.texture = opaqueTexture;
+      });
+      sprite.on('pointerleave', () => {
+        sprite.texture = transparentTexture;
+      });
       sprite.on('pointerdown', (e: PIXI.FederatedPointerEvent) => {
         e.stopPropagation();
       });
@@ -212,6 +287,8 @@ export function clearSpawnZone(): void {
   }
   spawnZoneSprites.length = 0;
 }
+
+/* ── Trees ── */
 
 const treeSprites: Map<string, { sprite: PIXI.Sprite; originalGid: number }> = new Map();
 let objectsContainerRef: PIXI.Container | null = null;
@@ -250,7 +327,7 @@ export function initTrees(
 
         sprite.anchor.set(0.5, 1);
         sprite.position.set(footScreen.x, footScreen.y + mapData.tileheight / 2);
-        sprite.zIndex = footTileX + footTileY; 
+        sprite.zIndex = footTileX + footTileY;
 
         objectsContainer.addChild(sprite);
         const key = `${worldX},${worldY}`;
@@ -263,14 +340,14 @@ export function initTrees(
 export function updateTreeTransparency(
   transparentZones: { x: number; y: number; radius: number }[]
 ): void {
-  if (!tilesetTexturesRef || !mapDataRef) return;
+  if (!tilesetTexturesRef || !mapDataRef || !mapGids) return;
 
-  const normalTex = tilesetTexturesRef.get(TREE_GID);
-  const transparentTex = tilesetTexturesRef.get(TRANSPARENT_TREE_GID);
+  const normalTex = tilesetTexturesRef.get(mapGids.tree);
+  const transparentTex = tilesetTexturesRef.get(mapGids.transparentTree);
   if (!normalTex || !transparentTex) return;
 
   for (const [key, entry] of treeSprites) {
-    if (entry.originalGid !== TREE_GID) continue;
+    if (entry.originalGid !== mapGids.tree) continue;
 
     const [wxStr, wyStr] = key.split(',');
     const worldX = parseInt(wxStr, 10);

@@ -1256,17 +1256,6 @@
          "width":0,
          "x":0,
          "y":0
-        }, 
-        {
-         "draworder":"topdown",
-         "id":4,
-         "name":"Collision",
-         "objects":[],
-         "opacity":1,
-         "type":"objectgroup",
-         "visible":true,
-         "x":0,
-         "y":0
         }],
  "nextlayerid":5,
  "nextobjectid":1,
@@ -1278,7 +1267,7 @@
         {
          "columns":1,
          "firstgid":1,
-         "image":"..\/..\/tilesets\/grass.png",
+         "image":"..\/tilesets\/grass.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1291,7 +1280,7 @@
         {
          "columns":1,
          "firstgid":2,
-         "image":"..\/..\/tilesets\/sand.png",
+         "image":"..\/tilesets\/sand.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1304,7 +1293,7 @@
         {
          "columns":1,
          "firstgid":3,
-         "image":"..\/..\/tilesets\/water.png",
+         "image":"..\/tilesets\/water.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1317,7 +1306,7 @@
         {
          "columns":1,
          "firstgid":4,
-         "image":"..\/..\/tilesets\/spruceTree.png",
+         "image":"..\/tilesets\/spruceTree.png",
          "imageheight":128,
          "imagewidth":64,
          "margin":0,
@@ -1330,7 +1319,7 @@
         {
          "columns":1,
          "firstgid":5,
-         "image":"..\/..\/tilesets\/transparentSpruceTree.png",
+         "image":"..\/tilesets\/transparentSpruceTree.png",
          "imageheight":128,
          "imagewidth":64,
          "margin":0,
@@ -1343,7 +1332,7 @@
         {
          "columns":1,
          "firstgid":6,
-         "image":"..\/..\/tilesets\/bush.png",
+         "image":"..\/tilesets\/bush.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1356,7 +1345,7 @@
         {
          "columns":1,
          "firstgid":7,
-         "image":"..\/..\/tilesets\/transparentBush.png",
+         "image":"..\/tilesets\/transparentBush.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1369,7 +1358,7 @@
         {
          "columns":1,
          "firstgid":8,
-         "image":"..\/..\/tilesets\/blueSelectionTile.png",
+         "image":"..\/tilesets\/blueSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1382,7 +1371,7 @@
         {
          "columns":1,
          "firstgid":9,
-         "image":"..\/..\/tilesets\/transparentBlueSelectionTile.png",
+         "image":"..\/tilesets\/transparentBlueSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1395,7 +1384,7 @@
         {
          "columns":1,
          "firstgid":10,
-         "image":"..\/..\/tilesets\/greenSelectionTile.png",
+         "image":"..\/tilesets\/greenSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1408,7 +1397,7 @@
         {
          "columns":1,
          "firstgid":11,
-         "image":"..\/..\/tilesets\/transparentGreenSelectionTile.png",
+         "image":"..\/tilesets\/transparentGreenSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1421,7 +1410,7 @@
         {
          "columns":1,
          "firstgid":12,
-         "image":"..\/..\/tilesets\/redSelectionTile.png",
+         "image":"..\/tilesets\/redSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1434,7 +1423,7 @@
         {
          "columns":1,
          "firstgid":13,
-         "image":"..\/..\/tilesets\/transparentRedSelectionTile.png",
+         "image":"..\/tilesets\/transparentRedSelectionTile.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1447,7 +1436,7 @@
         {
          "columns":1,
          "firstgid":14,
-         "image":"..\/..\/tilesets\/stone.png",
+         "image":"..\/tilesets\/stone.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,
@@ -1460,7 +1449,7 @@
         {
          "columns":1,
          "firstgid":15,
-         "image":"..\/..\/tilesets\/mountain.png",
+         "image":"..\/tilesets\/mountain.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,

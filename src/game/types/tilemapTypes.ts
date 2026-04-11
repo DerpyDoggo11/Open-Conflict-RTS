@@ -38,6 +38,7 @@ export interface TiledLayer {
   visible: boolean;
   startx?: number;
   starty?: number;
+  type?: string;
 }
 
 export interface TiledTileset {
@@ -49,4 +50,5 @@ export interface TiledTileset {
   tilewidth?: number;
   tileheight?: number;
   columns?: number;
+  name?: string;
 }

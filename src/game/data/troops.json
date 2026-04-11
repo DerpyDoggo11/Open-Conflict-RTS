@@ -10,11 +10,7 @@
     "maxHealth": 100,
     "spriteYOffset": 0,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
-    "actions": ["move", "repair"],
-    "animations": {
-      "idle":  { "fps": 8  },
-      "move":  { "fps": 12 }
-    }
+    "actions": ["move", "repair"]
   },
   "grunt": {
     "spritePath": "./assets/troops/grunt/sprite/",
@@ -27,12 +23,7 @@
     "maxHealth": 80,
     "spriteYOffset": 0,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
-    "actions": ["move", "rifle"],
-    "animations": {
-      "idle":  { "fps": 8  },
-      "move":  { "fps": 12 },
-      "shoot": { "fps": 14, "loops": 2 }
-    }
+    "actions": ["move", "rifle"]
   },
   "machineGunner": {
     "spritePath": "./assets/troops/machineGunner/sprite/",
@@ -45,28 +36,32 @@
     "maxHealth": 80,
     "spriteYOffset": 0,
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
-    "actions": ["move", "machineGun"],
-    "animations": {
-      "idle":  { "fps": 8  },
-      "move":  { "fps": 12 },
-      "shoot": { "fps": 18, "loops": 4 }
-    }
+    "actions": ["move", "machineGun"]
+  },
+  "mediumTank": {
+    "spritePath": "./assets/troops/mediumTank/sprite/",
+    "portraitPath": "/assets/troops/mediumTank/portrait.png",
+    "name": "Medium Tank",
+    "scale": 1,
+    "selectionRadius": 4,
+    "attackRadius": 3,
+    "treeSwapRadius": 5,
+    "maxHealth": 200,
+    "spriteYOffset": 64,
+    "footprint": { "forward": 1, "backward": 0, "left": 0, "right": 0 },
+    "actions": ["move", "machineGun", "tankShell"]
   },
   "tankDestroyer": {
     "spritePath": "./assets/troops/tankDestroyer/sprite/",
     "portraitPath": "/assets/troops/tankDestroyer/portrait.png",
     "name": "Tank Destroyer",
     "scale": 1,
-    "selectionRadius": 5,
+    "selectionRadius": 3,
     "attackRadius": 6,
     "treeSwapRadius": 5,
-    "maxHealth": 200,
-    "spriteYOffset": 128,
+    "maxHealth": 150,
+    "spriteYOffset": 64,
     "footprint": { "forward": 1, "backward": 0, "left": 0, "right": 0 },
-    "actions": ["move", "tankShell"],
-    "animations": {
-      "idle":  { "fps": 6  },
-      "move":  { "fps": 12 }
-    }
+    "actions": ["move", "tankShell"]
   }
 }

@@ -8,12 +8,12 @@ import {
   initSpawnZone,
   spawnSpawnZone,
   clearSpawnZone,
+  getMapGids,
 } from './entities/selectionUtils';
 import troopDefs from './data/troops.json';
 import { colyseusClient } from './network/colyseusClient';
 import type { CharacterMovement } from './entities/entityMovement';
 
-const SPAWN_GID = 5;
 export const troopRegistry = new Map<string, CharacterMovement>();
 
 const troopDefsArray = Object.entries(troopDefs).map(([key, def]) => ({
@@ -73,14 +73,16 @@ export class Intermission {
   }
 
   private _refreshSpawnZone(): void {
-    spawnSpawnZone(
-      this.tilesetTextures,
-      this.spawnZone,
-      SPAWN_GID,
-      this.mapData,
-      (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
-    );
-  }
+  const gids = getMapGids();
+  spawnSpawnZone(
+    this.tilesetTextures,
+    this.spawnZone,
+    gids.spawnTile,
+    gids.spawnTileTransparent || gids.spawnTile,
+    this.mapData,
+    (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
+  );
+}
 
   private onSpawnTileClick(tileX: number, tileY: number): void {
     if (this.placedCount >= this.maxTroops) return;

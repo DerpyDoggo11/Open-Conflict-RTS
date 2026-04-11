@@ -3,21 +3,34 @@ import { type TiledMap } from '../types/tilemapTypes';
 import { tileToScreen, screenToTile } from '../tilemap/tilemapUtils';
 import {
   clearArrow, clearSelection, drawArrowToTile,
-  spawnSelectionRadius, updateTreeTransparency
+  spawnSelectionRadius, updateTreeTransparency,
+  getMapGids,
 } from './selectionUtils';
 
 const FACING_TO_DIR: Record<string, number> = {
-  '-1,0':  1,
-  '-1,1':  2,
-  '0,1':   3,
-  '1,1':   4,
-  '1,0':   5,
-  '1,-1':  6,
-  '0,-1':  7,
-  '-1,-1': 8,
+  '0,1':  1,
+  '-1,1': 2, 
+  '0,-1':  3, 
+  '-1,-1':  4,   // doesnt work
+  '1,0':   5, 
+  '1,-1':   6,   
+  '-1,0':   7, 
+  '1,1':  8, 
 };
 
-export type TroopAnimations = Map<number, Map<string, PIXI.Texture[]>>;
+
+// const FACING_TO_DIR: Record<string, number> = {
+//   '0,1':  1,
+//   '-1,1': 2, 
+//   '0,-1':  3, 
+//   '-1,-1':  4,   // doesnt work
+//   '1,0':   5, 
+//   '1,-1':   6,   
+//   '-1,0':   7, 
+//   '1,1':  8, 
+// };
+
+export type TroopTextures = Map<number, { idle: PIXI.Texture; shoot?: PIXI.Texture }>;
 
 export interface CharacterMovementOptions {
   selectionRadius?: number;
@@ -32,14 +45,13 @@ export interface CharacterMovementOptions {
     left: number;
     right: number;
   };
-  animations?: TroopAnimations;
-  animationSpeed?: number;
+  textures?: TroopTextures;
   moveSpeed?: number;
-  shootLoops?: number;
+  shootDuration?: number;
 }
 
 export class CharacterMovement {
-  public sprite: PIXI.AnimatedSprite;
+  public sprite: PIXI.Sprite;
   public tileX: number;
   public tileY: number;
   public isSelected: boolean = false;
@@ -53,7 +65,9 @@ export class CharacterMovement {
   private app: PIXI.Application;
 
   private selectionGid: number;
+  private selectionGidTransparent: number;
   private attackGid: number;
+  private attackGidTransparent: number;
   private selectionRadius: number;
   private attackRadius: number;
   private treeSwapRadius: number;
@@ -61,13 +75,14 @@ export class CharacterMovement {
   private spriteYOffset: number;
   private footprint: { forward: number; backward: number; left: number; right: number };
 
-  private animations: TroopAnimations;
-  private animationSpeed: number;
+  private textures: TroopTextures;
   private moveSpeed: number;
-  private shootLoops: number;
+  private shootDuration: number;
   private lerpTickerFn: ((ticker: PIXI.Ticker) => void) | null = null;
   private targetScreenPos: { x: number; y: number } | null = null;
   private isMoving: boolean = false;
+  private isShooting: boolean = false;
+  private shootTimer: ReturnType<typeof setTimeout> | null = null;
 
   private selectionTileSprite: PIXI.Sprite | null = null;
 
@@ -89,7 +104,7 @@ export class CharacterMovement {
   private static activeMapData: TiledMap | null = null;
 
   constructor(
-    sprite: PIXI.AnimatedSprite,
+    sprite: PIXI.Sprite,
     tileX: number,
     tileY: number,
     app: PIXI.Application,
@@ -108,67 +123,79 @@ export class CharacterMovement {
     this.tilesetTextures = tilesetTextures;
     this.mapData = mapData;
 
-    this.selectionGid = 6;
-    this.attackGid = 8;
+    const gids = getMapGids();
+    this.selectionGid = gids.selectionTile;
+    this.selectionGidTransparent = gids.selectionTileTransparent || gids.selectionTile;
+    this.attackGid = gids.attackTile;
+    this.attackGidTransparent = gids.attackTileTransparent || gids.attackTile;
     this.selectionRadius = options.selectionRadius ?? 2;
     this.attackRadius = options.attackRadius ?? 3;
-    this.treeSwapRadius  = options.treeSwapRadius ?? 0;
+    this.treeSwapRadius = options.treeSwapRadius ?? 0;
     this.spritePath = options.spritePath ?? '';
     this.spriteYOffset = options.spriteYOffset ?? 0;
     this.footprint = options.footprint ?? { forward: 0, backward: 0, left: 0, right: 0 };
     this.isLocal = options.isLocal ?? true;
-    this.animations = options.animations ?? new Map();
-    this.animationSpeed = options.animationSpeed ?? 12;
+    this.textures = options.textures ?? new Map();
     this.moveSpeed = options.moveSpeed ?? 300;
-    this.shootLoops = options.shootLoops ?? 1;
+    this.shootDuration = options.shootDuration ?? 600;
 
-    this.playAnimation('Idle');
+    this.applyDirectionTexture();
     this.bindInputEvents();
     this.updateZIndex();
     updateTreeTransparency(this.getTransparencyZones());
   }
 
   private facingToDirection(): number {
-    return FACING_TO_DIR[`${this.facingDx},${this.facingDy}`] ?? 4;
+    const key = `${this.facingDx},${this.facingDy}`;
+    const dir = FACING_TO_DIR[key] ?? 4;
+    console.log(`[facing] tile delta (${key}) → dir ${dir}`);
+    return dir;
   }
 
-  public playAnimation(animName: string, onComplete?: () => void): void {
-    if (this.animations.size === 0) return;
-
-    const dirMap = this.animations.get(this.facingToDirection());
-    let frames = dirMap?.get(animName);
-
-    if (!frames || frames.length === 0) {
-      frames = dirMap?.get('Idle'); 
-      
-      if (!frames || frames.length === 0) {
-        frames = this.animations.get(4)?.get('Idle');
-        if (!frames || frames.length === 0) return;
-      }
-      animName = 'Idle';
-    }
-    this.sprite.onComplete = undefined;
-    this.sprite.textures = frames;
-    this.sprite.animationSpeed = this.animationSpeed / 60;
-
-    if (animName === 'Shoot') {
-      this.sprite.loop = false;
-      let remaining = this.shootLoops;
-      this.sprite.onComplete = () => {
-        remaining--;
-        if (remaining > 0) {
-          this.sprite.gotoAndPlay(0);
-        } else {
-          this.sprite.onComplete = undefined;
-          onComplete?.();
-          this.playAnimation('Idle');
+  private applyDirectionTexture(): void {
+    const dir = this.facingToDirection();
+    const entry = this.textures.get(dir);
+    if (!entry) {
+      for (const [, e] of this.textures) {
+        if (e?.idle) {
+          this.sprite.texture = e.idle;
+          return;
         }
-      };
-    } else {
-      this.sprite.loop = true;
+      }
+      return;
     }
 
-    this.sprite.gotoAndPlay(0);
+    if (this.isShooting && entry.shoot) {
+      this.sprite.texture = entry.shoot;
+    } else {
+      this.sprite.texture = entry.idle;
+    }
+  }
+
+  public setTextures(textures: TroopTextures): void {
+    this.textures = textures;
+    this.applyDirectionTexture();
+  }
+
+  public playShoot(onComplete?: () => void): void {
+    const dir = this.facingToDirection();
+    const entry = this.textures.get(dir);
+
+    if (!entry?.shoot) {
+      onComplete?.();
+      return;
+    }
+
+    this.isShooting = true;
+    this.applyDirectionTexture();
+
+    if (this.shootTimer) clearTimeout(this.shootTimer);
+    this.shootTimer = setTimeout(() => {
+      this.isShooting = false;
+      this.applyDirectionTexture();
+      this.shootTimer = null;
+      onComplete?.();
+    }, this.shootDuration);
   }
 
   private startLerp(targetX: number, targetY: number, onArrive: () => void): void {
@@ -211,7 +238,6 @@ export class CharacterMovement {
 
     this.app.ticker.add(this.lerpTickerFn);
   }
-
 
   private bindInputEvents(): void {
     CharacterMovement.allCharacters.add(this);
@@ -260,7 +286,10 @@ export class CharacterMovement {
       this.app.ticker.remove(this.lerpTickerFn);
       this.lerpTickerFn = null;
     }
-    this.sprite.stop();
+    if (this.shootTimer) {
+      clearTimeout(this.shootTimer);
+      this.shootTimer = null;
+    }
     this.sprite.destroy();
     CharacterMovement.allCharacters.delete(this);
     this.clearSelectionTile();
@@ -286,7 +315,6 @@ export class CharacterMovement {
     this.sprite.zIndex = maxSum - 0.5;
   }
 
-
   public open(): void { this.isSelected = true; }
 
   public openMove(): void {
@@ -294,7 +322,7 @@ export class CharacterMovement {
     clearArrow();
     spawnSelectionRadius(
       this.tilesetTextures, this.tileX, this.tileY,
-      this.selectionRadius, this.selectionGid,
+      this.selectionRadius, this.selectionGid, this.selectionGidTransparent,
       this.mapData, this,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
@@ -311,7 +339,7 @@ export class CharacterMovement {
     clearArrow();
     spawnSelectionRadius(
       this.tilesetTextures, this.tileX, this.tileY,
-      this.attackRadius, this.attackGid,
+      this.attackRadius, this.attackGid, this.attackGidTransparent,
       this.mapData, this,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
@@ -324,7 +352,7 @@ export class CharacterMovement {
           this.facingDx = Math.sign(dx) as -1 | 0 | 1;
           this.facingDy = Math.sign(dy) as -1 | 0 | 1;
         }
-        this.playAnimation('Shoot');
+        this.playShoot();
         onAttackTile?.(this.id, tx, ty, damage, shots);
       },
       true,
@@ -358,13 +386,12 @@ export class CharacterMovement {
     this.facingDy = prospectiveFdy;
 
     this.updateZIndex();
-    this.playAnimation('Move');
+    this.applyDirectionTexture();
 
     const screenPos = tileToScreen(tileX, tileY, this.mapData);
     const targetY = screenPos.y + this.mapData.tileheight / 2 + this.spriteYOffset;
 
     this.startLerp(screenPos.x, targetY, () => {
-      this.playAnimation('Idle');
       updateTreeTransparency(this.getTransparencyZones());
     });
 

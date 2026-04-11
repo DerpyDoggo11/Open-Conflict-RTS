@@ -1,19 +1,21 @@
 import * as PIXI from 'pixi.js';
 import { loadTiledMap } from './tilemap/tilemapLoader';
-import { createOceanMesh } from './tilemap/oceanBackground';
+// import { createOceanMesh } from './tilemap/oceanBackground';
 import { initTroopSync, preloadAllTroopAssets, spawnCharacter } from './entities/entityUtils';
 import { setupCamera } from './entities/camera';
 import {
   clearArrow, clearSelection, drawArrowToTile,
-  initArrow, initSelection, initTrees, spawnSelectionRadius
+  initArrow, initGrid, initMapGids, initSelection, initTrees, spawnSelectionRadius
 } from './entities/selectionUtils';
 import { colyseusClient } from './network/colyseusClient';
 import { Intermission } from './intermission';
 import { TroopHUDController } from './ui/troopHUDController';
+import { initWalkableGids } from './tilemap/tilemapUtils';
+import { tileToScreen } from './tilemap/tilemapUtils';
 
 const TEAM_SPAWN_ZONES: Record<string, { x: number; y: number; w: number; h: number }> = {
-  Red:  { x: -11,  y: -4,  w: 4, h: 4 },
-  Blue: { x: 8, y: -4, w: 4, h: 4 },
+  Red:  { x: -9,  y: -4,  w: 3, h: 8 },
+  Blue: { x: 18, y: -4, w: 3, h: 8 },
 };
 
 export async function initGame() {
@@ -37,11 +39,14 @@ export async function initGame() {
   app.stage.addChild(viewport);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
-    './assets/tilemaps/grasslands.json'
+    './assets/tilemaps/isle/isle.json'
   );
 
-  const groundTilemap = tilemaps.get('Ground')!;
+  initMapGids(mapData);
+  initWalkableGids(mapData);
+  initGrid(viewport, mapData);
 
+  const groundTilemap = tilemaps.get('Ground')!;
   const objectsContainer = new PIXI.Container();
   objectsContainer.sortableChildren = true;
   objectsContainer.label = 'Objects';
@@ -55,15 +60,14 @@ export async function initGame() {
   initArrow(viewport);
   viewport.addChild(selectionContainer);
   viewport.addChild(hudContainer);
-
-  createOceanMesh(app, viewport, mapData);
+  // createOceanMesh(app, viewport, mapData);
 
   try {
     await preloadAllTroopAssets();
   } catch (e) {
     console.error('[initGame] Failed to preload troop assets:', e);
   }
-  
+
   try {
     await colyseusClient.joinGame(playerName);
     console.log('[initGame] joined game as', playerName);
@@ -82,6 +86,13 @@ export async function initGame() {
     objectsContainer,
     tilesetTextures
   );
+
+  // Set up camera with smooth controls
+  viewport.pivot.set(0, 0);
+  viewport.position.set(app.screen.width / 2, app.screen.height / 2);
+  viewport.scale.set(0.5, 0.5);
+
+  const camera = setupCamera(app, viewport);
 
   let intermission: Intermission | null = null;
 
@@ -112,17 +123,16 @@ export async function initGame() {
           console.log('Game started!');
         }
       );
-
       intermission.updateTeamsList(teams);
+
+      const centerTileX = spawnZone.x + spawnZone.w / 2;
+      const centerTileY = spawnZone.y + spawnZone.h / 2;
+      const screenPos = tileToScreen(centerTileX, centerTileY, mapData);
+      camera.lerpTo(screenPos.x, screenPos.y, 1500);
     } else if (intermission) {
       intermission.updateTeamsList(teams);
     }
   });
-
-  viewport.pivot.set(0, 0);
-  viewport.position.set(app.screen.width / 2, app.screen.height / 2);
-  viewport.scale.set(0.5, 0.5);
-  setupCamera(app, viewport);
 }
 
 initGame().catch(console.error);
