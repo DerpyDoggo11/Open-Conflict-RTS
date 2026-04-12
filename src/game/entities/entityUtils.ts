@@ -9,22 +9,7 @@ import { TroopHUDController } from '../ui/troopHUDController';
 import { ProjectileManager } from './projectileManager';
 import { FloatingHealthBar } from './floatingHealthBar';
 
-/**
- * Direction layout for 3×3 grid spritesheets:
- *
- *   Spritesheet grid:
- *     (0,0) SW    (1,0) S     (2,0) SE
- *     (0,1) W     (1,1) N     (2,1) E
- *     (0,2) NW    (1,2) NE    (2,2) EMPTY
- *
- *   Direction numbers (clockwise from dir 1):
- *     8(SW)  1(S)   2(SE)
- *     7(W)   4(N)   3(E)
- *     6(NW)  5(NE)  —
- *
- * For vertical strip spritesheets (128px troops):
- *   directions 1–8 top to bottom
- */
+
 const GRID_DIR_MAP: Record<number, { col: number; row: number }> = {
   8: { col: 0, row: 0 },
   1: { col: 1, row: 0 },
@@ -36,13 +21,11 @@ const GRID_DIR_MAP: Record<number, { col: number; row: number }> = {
   5: { col: 1, row: 2 },
 };
 
+const VERTICAL_DIR_ORDER = [8, 1, 2, 7, 4, 3, 6, 5];
+
+
 const textureCache = new Map<string, TroopTextures>();
 
-/**
- * Slice a spritesheet into per-direction textures.
- * layout "grid": 3×3 grid, each cell = source.width/3 × source.height/3
- * layout "vertical": 1 column, 8 rows
- */
 async function sliceSpritesheet(
   baseTexture: PIXI.Texture,
   layout: 'grid' | 'vertical',
@@ -50,7 +33,6 @@ async function sliceSpritesheet(
   const source = baseTexture.source;
   const result = new Map<number, PIXI.Texture>();
 
-  // Wait for the image source to fully decode if not ready yet
   if (source.width === 0 || source.height === 0) {
     if (source.resource instanceof HTMLImageElement) {
       await source.resource.decode();
@@ -79,8 +61,9 @@ async function sliceSpritesheet(
   } else {
     const cellW = srcW;
     const cellH = Math.floor(srcH / 8);
-    for (let dir = 1; dir <= 8; dir++) {
-      const rect = new PIXI.Rectangle(0, (dir - 1) * cellH, cellW, cellH);
+    for (let row = 0; row < 8; row++) {
+      const dir = VERTICAL_DIR_ORDER[row];
+      const rect = new PIXI.Rectangle(0, row * cellH, cellW, cellH);
       result.set(dir, new PIXI.Texture({ source, frame: rect }));
     }
   }

@@ -12,7 +12,7 @@ const FACING_TO_DIR: Record<string, number> = {
   '0,1':  1,
   '-1,1': 2, 
   '0,-1':  3, 
-  '-1,-1':  4,   // doesnt work
+  '-1,-1':  4, 
   '1,0':   5, 
   '1,-1':   6,   
   '-1,0':   7, 
@@ -55,9 +55,7 @@ export class CharacterMovement {
   private app: PIXI.Application;
 
   private selectionGid: number;
-  private selectionGidTransparent: number;
   private attackGid: number;
-  private attackGidTransparent: number;
   private selectionRadius: number;
   private attackRadius: number;
   private treeSwapRadius: number;
@@ -115,9 +113,7 @@ export class CharacterMovement {
 
     const gids = getMapGids();
     this.selectionGid = gids.selectionTile;
-    this.selectionGidTransparent = gids.selectionTileTransparent || gids.selectionTile;
     this.attackGid = gids.attackTile;
-    this.attackGidTransparent = gids.attackTileTransparent || gids.attackTile;
     this.selectionRadius = options.selectionRadius ?? 2;
     this.attackRadius = options.attackRadius ?? 3;
     this.treeSwapRadius = options.treeSwapRadius ?? 0;
@@ -314,7 +310,7 @@ export class CharacterMovement {
     clearArrow();
     spawnSelectionRadius(
       this.tilesetTextures, this.tileX, this.tileY,
-      this.selectionRadius, this.selectionGid, this.selectionGidTransparent,
+      this.selectionRadius, this.selectionGid,
       this.mapData, this,
       (tx, ty) => drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData),
       () => clearArrow(),
@@ -333,7 +329,7 @@ public openAttack(
 
   spawnSelectionRadius(
     this.tilesetTextures, this.tileX, this.tileY,
-    this.attackRadius, this.attackGid, this.attackGidTransparent,
+    this.attackRadius, this.attackGid,
     this.mapData, this,
     (tx, ty) => {
       drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData);

@@ -195,7 +195,7 @@ export function spawnSelectionRadius(
   tilesetTextures: Map<number, PIXI.Texture>,
   centerX: number, centerY: number,
   radius: number,
-  tileGid: number, _tileGidTransparent: number,
+  tileGid: number,
   mapData: TiledMap,
   movingCharacter: CharacterMovement,
   onHover: (tileX: number, tileY: number) => void,
@@ -264,7 +264,7 @@ export function clearSelection(): void {
 export function spawnSpawnZone(
   tilesetTextures: Map<number, PIXI.Texture>,
   spawnZone: { x: number; y: number; w: number; h: number },
-  spawnGid: number, _spawnGidTransparent: number,
+  spawnGid: number,
   mapData: TiledMap,
   onClick: (tileX: number, tileY: number) => void,
 ): void {

@@ -76,7 +76,6 @@ export class Intermission {
     this.tilesetTextures,
     this.spawnZone,
     gids.spawnTile,
-    gids.spawnTileTransparent || gids.spawnTile,
     this.mapData,
     (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
   );

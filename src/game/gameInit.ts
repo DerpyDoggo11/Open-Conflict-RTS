@@ -39,7 +39,7 @@ export async function initGame() {
   app.stage.addChild(viewport);
 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
-    `./assets/tilemaps/${map}/${map}.json`
+    `./assets/tilemaps/${map}.json`
   );
 
   initMapGids(mapData);
