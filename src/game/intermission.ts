@@ -70,13 +70,10 @@ export class Intermission {
     this._bindServerEvents();
     this._bindGameOverEvents();
 
-    // Auto-spawn the general at the caller-specified position
     this._autoSpawnGeneral();
 
     this._refreshSpawnZone();
   }
-
-  /* ── Auto-spawn general ── */
 
   private async _autoSpawnGeneral(): Promise<void> {
     const { tileX, tileY } = this.generalSpawn;
@@ -84,12 +81,7 @@ export class Intermission {
     await this._spawnTroop('general' as TroopType, tileX, tileY);
   }
 
-  /* ── Game-over handling ── */
-
   private _bindGameOverEvents(): void {
-    // Use the centralized game-over event from entityUtils.
-    // This fires from ALL kill paths: local applyMultiHitDamage,
-    // server troopDamage, server troopDied — whichever triggers first.
     onGameOver((isVictory: boolean) => {
       this._showGameOver(isVictory);
     });
@@ -106,8 +98,6 @@ export class Intermission {
     });
     overlay.mount();
   }
-
-  /* ── Spawn zone ── */
 
   private _refreshSpawnZone(): void {
     const gids = getMapGids();
@@ -135,11 +125,10 @@ export class Intermission {
       true,
     );
 
-    // Wire up local general death detection (health listener)
     if (type === 'general') {
       movement.onHealthChange((hp) => {
         if (hp <= 0) {
-          this._showGameOver(false); // our general died → defeat
+          this._showGameOver(false);
         }
       });
     }
@@ -148,7 +137,6 @@ export class Intermission {
   }
 
   private _buildIntermissionSelectorOverlay(): void {
-    // Filter OUT the general — it is auto-spawned and cannot be manually selected
     const troopOptions = troopDefsArray
       .filter(t => t.type !== 'general')
       .map(t => ({
@@ -167,7 +155,6 @@ export class Intermission {
         const troopDef = troopDefsArray.find(t => t.type === type);
         const cost = troopDef?.cost ?? 0;
 
-        // Can't afford this troop
         if (cost > this.credits) return;
 
         const { tileX, tileY } = this.pendingTile;

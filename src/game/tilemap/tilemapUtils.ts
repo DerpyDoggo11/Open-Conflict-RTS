@@ -117,7 +117,6 @@ export function initWalkableGids(mapData: TiledMap): void {
         Math.floor(tileset.imageheight! / tileset.tileheight!)
       : 1;
 
-    // Check ground-layer blocking
     if (groundBlockKeywords.some(k => nameLower.includes(k))) {
       for (let i = 0; i < tileCount; i++) {
         nonWalkableGids.add(tileset.firstgid + i);
@@ -134,12 +133,10 @@ export function isTileInWalkableBounds(
   tileY: number,
   mapData: TiledMap
 ): boolean {
-  // Check ground layer
   const groundGid = getChunkedTileGid(tileX, tileY, mapData, 'Ground');
   if (groundGid === 0) return false;
   if (nonWalkableGids.has(groundGid)) return false;
 
-  // Check objects layer — mountains, rocks, etc. also block movement
   const objectGid = getChunkedTileGid(tileX, tileY, mapData, 'Objects');
   if (objectGid !== 0 && blockingObjectGids.has(objectGid)) return false;
 

@@ -15,8 +15,6 @@ export function getMapGids(): MapGids {
   return mapGids;
 }
 
-/* ── Arrow ── */
-
 let arrowGraphics: PIXI.Graphics | null = null;
 
 export function initArrow(viewport: PIXI.Container): void {
@@ -53,8 +51,6 @@ export function drawArrowToTile(
 
 export function clearArrow(): void { arrowGraphics?.clear(); }
 
-/* ── Grid overlay ── */
-
 let gridGraphics: PIXI.Graphics | null = null;
 
 export function initGrid(viewport: PIXI.Container, mapData: TiledMap): void {
@@ -87,8 +83,6 @@ export function initGrid(viewport: PIXI.Container, mapData: TiledMap): void {
       .stroke({ width: 1, color: 0xffffff, alpha: 0.08 });
   }
 }
-
-/* ── Tile-based click system ── */
 
 interface TileZone {
   tiles: Map<string, { tileX: number; tileY: number }>;
@@ -139,14 +133,12 @@ function onViewportTap(e: PIXI.FederatedPointerEvent): void {
   const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, mapDataRef);
   const key = tileKey(tileX, tileY);
 
-  // Selection zone has priority (move/attack tiles)
   if (activeSelectionZone?.tiles.has(key)) {
     e.stopPropagation();
     activeSelectionZone.onClick(tileX, tileY);
     return;
   }
 
-  // Spawn zone
   if (activeSpawnZone?.tiles.has(key)) {
     e.stopPropagation();
     activeSpawnZone.onClick(tileX, tileY);
@@ -160,12 +152,10 @@ function onViewportMove(e: PIXI.FederatedPointerEvent): void {
   const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, mapDataRef);
   const key = tileKey(tileX, tileY);
 
-  // Check if hovering any interactive tile
   const zone = activeSelectionZone?.tiles.has(key) ? activeSelectionZone
     : activeSpawnZone?.tiles.has(key) ? activeSpawnZone : null;
 
   if (hoveredTileKey !== key) {
-    // Un-hover previous
     if (hoveredTileKey) {
       const prevZone = activeSelectionZone?.sprites.has(hoveredTileKey) ? activeSelectionZone
         : activeSpawnZone?.sprites.has(hoveredTileKey) ? activeSpawnZone : null;
@@ -188,8 +178,6 @@ function onViewportMove(e: PIXI.FederatedPointerEvent): void {
     }
   }
 }
-
-/* ── Selection radius ── */
 
 export function spawnSelectionRadius(
   tilesetTextures: Map<number, PIXI.Texture>,
@@ -259,8 +247,6 @@ export function clearSelection(): void {
   hoveredTileKey = null;
 }
 
-/* ── Spawn zone ── */
-
 export function spawnSpawnZone(
   tilesetTextures: Map<number, PIXI.Texture>,
   spawnZone: { x: number; y: number; w: number; h: number },
@@ -317,14 +303,8 @@ export function clearSpawnZone(): void {
   }
 }
 
-/* ── Trees / Objects ── */
-
 const treeSprites: Map<string, PIXI.Sprite> = new Map();
 
-/**
- * Build a set of GIDs that belong to tilesets whose names contain any of
- * the given keywords. Used to identify which object tiles are trees vs mountains.
- */
 function getGidsForTilesetNames(
   mapData: TiledMap,
   keywords: string[],
@@ -339,10 +319,9 @@ function getGidsForTilesetNames(
     const matches = keywords.some(k => nameLower.includes(k));
     if (!matches) continue;
 
-    // Determine how many GIDs this tileset covers
     const nextFirstGid = (i + 1 < sortedTilesets.length)
       ? sortedTilesets[i + 1].firstgid
-      : ts.firstgid + 9999; // large upper bound for last tileset
+      : ts.firstgid + 9999;
 
     for (let gid = ts.firstgid; gid < nextFirstGid; gid++) {
       gids.add(gid);
@@ -363,8 +342,7 @@ export function initTrees(
   const hw = mapData.tilewidth / 2;
   const hh = mapData.tileheight / 2;
 
-  // GIDs that should NEVER become transparent (mountains, rocks, etc.)
-  const nonTransparentGids = getGidsForTilesetNames(mapData, ['mountain', 'rock', 'cliff', 'stone']);
+  const nonTransparentGids = getGidsForTilesetNames(mapData, ['stone']);
 
   for (const chunk of layer.chunks) {
     for (let localY = 0; localY < chunk.height; localY++) {
@@ -394,8 +372,6 @@ export function initTrees(
 
         objectsContainer.addChild(sprite);
 
-        // Only tree-like objects go into the transparency map.
-        // Mountains, rocks, etc. render normally but are never made transparent.
         if (!nonTransparentGids.has(gid)) {
           treeSprites.set(`${worldX},${worldY}`, sprite);
         }

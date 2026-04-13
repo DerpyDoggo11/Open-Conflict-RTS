@@ -3,7 +3,8 @@
     "label": "Move",
     "iconPath": "/assets/actions/move/icon.png",
     "type": "move",
-    "cooldown": 6000
+    "cooldown": 6000,
+    "sound": "move"
   },
   "repair": {
     "label": "Repair",
@@ -19,7 +20,8 @@
     "shots": 3,
     "shotDelay": 700,
     "cooldown": 10000,
-    "projectilePath": "/assets/actions/misc/bullet.png"
+    "projectilePath": "/assets/actions/misc/bullet.png",
+    "sound": "rifle_shot"
   },
   "machineGun": {
     "label": "Primary",
@@ -29,7 +31,8 @@
     "shots": 6,
     "shotDelay": 500,
     "cooldown": 10000,
-    "projectilePath": "/assets/actions/misc/bullet.png"
+    "projectilePath": "/assets/actions/misc/bullet.png",
+    "sound": "machine_gun_shot"
   },
   "tankShell": {
     "label": "Primary",
@@ -39,6 +42,7 @@
     "shots": 1,
     "shotDelay": 0,
     "cooldown": 15000,
-    "projectilePath": "/assets/actions/misc/heavyBullet.png"
+    "projectilePath": "/assets/actions/misc/heavyBullet.png",
+    "sound": "tank_shell"
   }
 }

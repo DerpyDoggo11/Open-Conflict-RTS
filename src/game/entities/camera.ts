@@ -114,8 +114,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
     const direction = e.deltaY > 0 ? -1 : 1;
     targetScale = Math.max(minScale, Math.min(maxScale, targetScale + direction * zoomFactor));
 
-    // Capture the world point under the cursor at the CURRENT scale,
-    // so the ticker can keep it pinned as the scale interpolates
     const currentScale = viewport.scale.x;
     zoomAnchorScreen = { x: e.clientX, y: e.clientY };
     zoomAnchorWorld = {
@@ -124,7 +122,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
     };
   });
 
-  // --- Middle/right-click drag ---
   app.canvas.addEventListener('mousedown', (e: MouseEvent) => {
     if (e.button !== 1 && e.button !== 2) return;
 
@@ -174,7 +171,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
   app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   app.canvas.style.cursor = 'grab';
 
-  // --- Keyboard ---
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (lerpAnim && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(e.key)) {
       lerpAnim.resolve();
@@ -194,7 +190,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
     keysDown.delete(e.key);
   });
 
-  // --- Public API ---
   const controller: CameraController = {
     lerpTo(worldX: number, worldY: number, durationMs = 1200): Promise<void> {
       if (lerpAnim) {

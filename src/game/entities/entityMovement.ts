@@ -25,6 +25,7 @@ export interface CharacterMovementOptions {
   selectionRadius?: number;
   attackRadius?: number;
   treeSwapRadius?: number;
+  visionRadius?: number;
   spritePath?: string;
   isLocal?: boolean;
   spriteYOffset?: number;
@@ -59,6 +60,7 @@ export class CharacterMovement {
   private selectionRadius: number;
   private attackRadius: number;
   private treeSwapRadius: number;
+  private visionRadius: number;
   private spritePath: string;
   private spriteYOffset: number;
   private footprint: { forward: number; backward: number; left: number; right: number };
@@ -117,6 +119,7 @@ export class CharacterMovement {
     this.selectionRadius = options.selectionRadius ?? 2;
     this.attackRadius = options.attackRadius ?? 3;
     this.treeSwapRadius = options.treeSwapRadius ?? 0;
+    this.visionRadius = options.visionRadius ?? 5;
     this.spritePath = options.spritePath ?? '';
     this.spriteYOffset = options.spriteYOffset ?? 0;
     this.footprint = options.footprint ?? { forward: 0, backward: 0, left: 0, right: 0 };
@@ -134,7 +137,6 @@ export class CharacterMovement {
   private facingToDirection(): number {
     const key = `${this.facingDx},${this.facingDy}`;
     const dir = FACING_TO_DIR[key] ?? 4;
-    console.log(`[facing] tile delta (${key}) → dir ${dir}`);
     return dir;
   }
 
@@ -317,51 +319,52 @@ export class CharacterMovement {
       (tx, ty) => { this.moveTo(tx, ty); },
     );
   }
-public openAttack(
-  onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
-  damage: number = 20,
-  shots: number = 1,
-): void {
-  clearSelection();
-  clearArrow();
 
-  const totalDamage = damage * shots;
+  public openAttack(
+    onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
+    damage: number = 20,
+    shots: number = 1,
+  ): void {
+    clearSelection();
+    clearArrow();
 
-  spawnSelectionRadius(
-    this.tilesetTextures, this.tileX, this.tileY,
-    this.attackRadius, this.attackGid,
-    this.mapData, this,
-    (tx, ty) => {
-      drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData);
-      const enemy = CharacterMovement.getEnemyAtTile(tx, ty);
-      if (enemy?.floatingHealthBar) {
-        enemy.floatingHealthBar.showDamagePreview(totalDamage);
-      }
-    },
-    () => {
-      clearArrow();
-      for (const char of CharacterMovement.allCharacters) {
-        if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
-      }
-    },
-    (tx, ty) => {
-      clearSelection();
-      clearArrow();
-      for (const char of CharacterMovement.allCharacters) {
-        if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
-      }
-      const dx = tx - this.tileX;
-      const dy = ty - this.tileY;
-      if (dx !== 0 || dy !== 0) {
-        this.facingDx = Math.sign(dx) as -1 | 0 | 1;
-        this.facingDy = Math.sign(dy) as -1 | 0 | 1;
-      }
-      this.playShoot();
-      onAttackTile?.(this.id, tx, ty, damage, shots);
-    },
-    true,
-  );
-}
+    const totalDamage = damage * shots;
+
+    spawnSelectionRadius(
+      this.tilesetTextures, this.tileX, this.tileY,
+      this.attackRadius, this.attackGid,
+      this.mapData, this,
+      (tx, ty) => {
+        drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData);
+        const enemy = CharacterMovement.getEnemyAtTile(tx, ty);
+        if (enemy?.floatingHealthBar) {
+          enemy.floatingHealthBar.showDamagePreview(totalDamage);
+        }
+      },
+      () => {
+        clearArrow();
+        for (const char of CharacterMovement.allCharacters) {
+          if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
+        }
+      },
+      (tx, ty) => {
+        clearSelection();
+        clearArrow();
+        for (const char of CharacterMovement.allCharacters) {
+          if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
+        }
+        const dx = tx - this.tileX;
+        const dy = ty - this.tileY;
+        if (dx !== 0 || dy !== 0) {
+          this.facingDx = Math.sign(dx) as -1 | 0 | 1;
+          this.facingDy = Math.sign(dy) as -1 | 0 | 1;
+        }
+        this.playShoot();
+        onAttackTile?.(this.id, tx, ty, damage, shots);
+      },
+      true,
+    );
+  }
 
   public close(): void {
     clearSelection();
@@ -379,8 +382,10 @@ public openAttack(
     const prospectiveFdy = isMovingToNew ? (Math.sign(dy) as -1 | 0 | 1) : this.facingDy;
 
     if (this.wouldCollide(tileX, tileY, prospectiveFdx, prospectiveFdy)) {
-      clearSelection();
-      clearArrow();
+      if (this.isLocal) {
+        clearSelection();
+        clearArrow();
+      }
       return;
     }
 
@@ -399,8 +404,10 @@ public openAttack(
       updateTreeTransparency(this.getTransparencyZones());
     });
 
-    clearSelection();
-    clearArrow();
+    if (this.isLocal) {
+      clearSelection();
+      clearArrow();
+    }
     updateTreeTransparency(this.getTransparencyZones());
   }
 
@@ -420,6 +427,39 @@ public openAttack(
       zones.push({ x: char.tileX, y: char.tileY, radius: char.treeSwapRadius });
     }
     return zones;
+  }
+
+  public static getLocalVisionZones(): { x: number; y: number; radius: number }[] {
+    const zones: { x: number; y: number; radius: number }[] = [];
+    for (const char of CharacterMovement.allCharacters) {
+      if (!char.isLocal) continue;
+      zones.push({ x: char.tileX, y: char.tileY, radius: char.visionRadius });
+    }
+    return zones;
+  }
+
+  public static isInLocalVision(tileX: number, tileY: number): boolean {
+    for (const char of CharacterMovement.allCharacters) {
+      if (!char.isLocal) continue;
+      const dist = Math.abs(tileX - char.tileX) + Math.abs(tileY - char.tileY);
+      if (dist <= char.visionRadius) return true;
+    }
+    return false;
+  }
+
+  public static updateEnemyVisibility(): void {
+    for (const char of CharacterMovement.allCharacters) {
+      if (char.isLocal) continue;
+      const visible = CharacterMovement.isInLocalVision(char.tileX, char.tileY);
+      char.sprite.visible = visible;
+      if (char.floatingHealthBar) {
+        try {
+          (char.floatingHealthBar as any).container
+            ? ((char.floatingHealthBar as any).container.visible = visible)
+            : ((char.floatingHealthBar as any).sprite && ((char.floatingHealthBar as any).sprite.visible = visible));
+        } catch { /* health bar doesn't support visibility toggle */ }
+      }
+    }
   }
 
   public getOccupiedTiles(): { tileX: number; tileY: number }[] {

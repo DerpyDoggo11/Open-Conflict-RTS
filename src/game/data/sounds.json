@@ -1,0 +1,64 @@
+{
+  "rifle_shot": {
+    "path": "/assets/sounds/troops/shootAssaultRifle.mp3",
+    "volume": 0.4,
+    "positional": true,
+    "maxDistance": 1500
+  },
+  "machine_gun_shot": {
+    "path": "/assets/sounds/troops/shootMachineGun.mp3",
+    "volume": 0.5,
+    "positional": true,
+    "maxDistance": 1500
+  },
+  "tank_shell": {
+    "path": "/assets/sounds/troops/shootTankDestroyer.mp3",
+    "volume": 0.5,
+    "positional": true,
+    "maxDistance": 2000
+  },
+  "move": {
+    "path": "/assets/sounds/troops/moveTroop.mp3",
+    "volume": 0.4,
+    "positional": true,
+    "maxDistance": 1000
+  },
+  "tank_move": {
+    "path": "/assets/sounds/troops/moveTank.mp3",
+    "volume": 0.3,
+    "positional": true,
+    "maxDistance": 1200
+  },
+  "troop_hit": {
+    "path": "/assets/sounds/troops/deathTroop.mp3",
+    "volume": 0.3,
+    "positional": true,
+    "maxDistance": 1200
+  },
+  "troop_death": {
+    "path": "/assets/sounds/troops/deathTroop.mp3",
+    "volume": 0.5,
+    "positional": true,
+    "maxDistance": 1500
+  },
+  "ui_click": {
+    "path": "/assets/sounds/ui/uiClick.mp3",
+    "volume": 0.5,
+    "positional": false
+  },
+  "game_start": {
+    "path": "",
+    "volume": 0.5,
+    "positional": false
+  },
+  "victory": {
+    "path": "/assets/sounds/ui/victory.mp3",
+    "volume": 0.5,
+    "positional": false
+  },
+  "defeat": {
+    "path": "/assets/sounds/ui/defeat.mp3",
+    "volume": 0.5,
+    "positional": false
+  }
+}

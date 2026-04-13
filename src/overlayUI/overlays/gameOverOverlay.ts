@@ -1,18 +1,10 @@
-/**
- * GameOverOverlay – shown when a general dies.
- * Uses the same background-image treatment as IntermissionTroopSelectorOverlay.
- */
+
 
 export interface GameOverOptions {
-  /** true = you won, false = you lost */
   isVictory: boolean;
-  /** URL to redirect to (main menu) */
   mainMenuUrl: string;
-  /** Delay in ms before auto-redirect (0 = no auto-redirect) */
   redirectDelay?: number;
-  /** Path to the victory image */
   winImagePath?: string;
-  /** Path to the defeat image */
   deathImagePath?: string;
 }
 
@@ -30,23 +22,19 @@ export class GameOverOverlay {
       deathImagePath = '/assets/ui/death.png',
     } = options;
 
-    // Full-screen backdrop
     this.element = document.createElement('div');
     this.element.className = 'game-over-overlay';
 
-    // Panel (same style as intermission-troop-selector__panel)
     const panel = document.createElement('div');
     panel.className = 'game-over-overlay__panel';
     this.element.appendChild(panel);
 
-    // Result image
     const img = document.createElement('img');
     img.className = 'game-over-overlay__image';
     img.src = isVictory ? winImagePath : deathImagePath;
     img.alt = isVictory ? 'Victory' : 'Defeat';
     panel.appendChild(img);
 
-    // Title
     const title = document.createElement('h2');
     title.className = 'game-over-overlay__title';
     title.textContent = isVictory ? 'VICTORY' : 'DEFEAT';
@@ -54,7 +42,6 @@ export class GameOverOverlay {
     else title.classList.add('game-over-overlay__title--defeat');
     panel.appendChild(title);
 
-    // Subtitle
     const subtitle = document.createElement('p');
     subtitle.className = 'game-over-overlay__subtitle sublabel';
     subtitle.textContent = isVictory
@@ -62,7 +49,6 @@ export class GameOverOverlay {
       : 'Your general has fallen.';
     panel.appendChild(subtitle);
 
-    // Button
     const btn = document.createElement('button');
     btn.className = 'game-over-overlay__btn';
     btn.textContent = 'Return to Main Menu';
@@ -72,12 +58,10 @@ export class GameOverOverlay {
     });
     panel.appendChild(btn);
 
-    // Countdown label
     const countdown = document.createElement('span');
     countdown.className = 'game-over-overlay__countdown sublabel';
     panel.appendChild(countdown);
 
-    // Auto-redirect countdown
     if (redirectDelay > 0) {
       let remaining = Math.ceil(redirectDelay / 1000);
       countdown.textContent = `Returning in ${remaining}s\u2026`;
@@ -98,13 +82,11 @@ export class GameOverOverlay {
       }, redirectDelay);
     }
 
-    // Animate in on next frame
     requestAnimationFrame(() => {
       this.element.classList.add('game-over-overlay--open');
     });
   }
 
-  /** Mount into the DOM */
   mount(parent?: HTMLElement): void {
     (parent ?? document.getElementById('app')!).appendChild(this.element);
   }

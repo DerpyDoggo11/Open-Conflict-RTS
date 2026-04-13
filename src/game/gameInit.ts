@@ -12,6 +12,9 @@ import { Intermission } from './intermission';
 import { TroopHUDController } from './ui/troopHUDController';
 import { initWalkableGids } from './tilemap/tilemapUtils';
 import { tileToScreen } from './tilemap/tilemapUtils';
+import { FogOfWar } from './tilemap/fogOfWar';
+import { SoundManager } from './sounds/soundHandler';
+import soundDefs from './data/sounds.json';
 
 const TEAM_SPAWN_ZONES: Record<string, { x: number; y: number; w: number; h: number }> = {
   Red:  { x: -9,  y: -4,  w: 3, h: 9 },
@@ -43,6 +46,9 @@ export async function initGame() {
   const viewport = new PIXI.Container();
   app.stage.addChild(viewport);
 
+  await SoundManager.init(app, viewport);
+  await SoundManager.registerAll(soundDefs as Record<string, any>);
+ 
   const { tilemaps, tilesetTextures, mapData } = await loadTiledMap(
     `./assets/tilemaps/${map}.json`
   );
@@ -96,6 +102,8 @@ export async function initGame() {
   initTileInput(app, viewport, mapData);
   const camera = setupCamera(app, viewport);
 
+  const fog = new FogOfWar(app, viewport, mapData);
+ 
   let intermission: Intermission | null = null;
 
   colyseusClient.onPlayersUpdate((teams) => {
@@ -126,6 +134,7 @@ export async function initGame() {
         generalSpawn,
         () => {
           console.log('Game started!');
+          fog.enable();
         }
       );
       intermission.updateTeamsList(teams);
@@ -138,6 +147,35 @@ export async function initGame() {
       intermission.updateTeamsList(teams);
     }
   });
+
+  // background music
+
+  let gameAudioCtx = new AudioContext();
+
+  if (gameAudioCtx.state === "suspended") {
+      const resume = () => {
+          gameAudioCtx.resume();
+          window.removeEventListener("pointerdown", resume);
+          window.removeEventListener("keydown", resume);
+      };
+      window.addEventListener("pointerdown", resume);
+      window.addEventListener("keydown", resume);
+  }
+
+  const resp = await fetch('/assets/sounds/music/game.mp3');
+  const buf = await resp.arrayBuffer();
+  const audioBuf = await gameAudioCtx.decodeAudioData(buf);
+
+  let gameMusic = gameAudioCtx.createBufferSource();
+  gameMusic.buffer = audioBuf;
+  gameMusic.loop = true;
+
+  const gain = gameAudioCtx.createGain();
+  gain.gain.value = 0.7;
+  gameMusic.connect(gain).connect(gameAudioCtx.destination);
+
+  gameMusic.start();
+
 }
 
 initGame().catch(console.error);

@@ -8,6 +8,7 @@ import { colyseusClient } from '../network/colyseusClient';
 import { TroopHUDController } from '../ui/troopHUDController';
 import { ProjectileManager } from './projectileManager';
 import { FloatingHealthBar } from './floatingHealthBar';
+import { SoundManager } from '../sounds/soundHandler';
 
 
 const GRID_DIR_MAP: Record<number, { col: number; row: number }> = {
@@ -98,7 +99,7 @@ async function loadTroopTextures(spritePath: string, layout: 'grid' | 'vertical'
         shootFrames = await sliceSpritesheet(shootSheet, layout);
       }
     } catch {
-      // no shoot spritesheet — that's fine
+      
     }
   }
 
@@ -122,8 +123,6 @@ let intermissionComplete = false;
 let localTeamId = '';
 let projectileManager: ProjectileManager | null = null;
 
-/* ── Game-over listeners ── */
-
 type GameOverListener = (isVictory: boolean) => void;
 const gameOverListeners: GameOverListener[] = [];
 let gameOverFired = false;
@@ -137,8 +136,6 @@ function fireGameOver(isVictory: boolean): void {
   gameOverFired = true;
   gameOverListeners.forEach(fn => fn(isVictory));
 }
-
-/* ── Public helpers ── */
 
 export function setLocalTeamId(teamId: string): void {
   localTeamId = teamId;
@@ -190,12 +187,16 @@ export function initTroopSync(
   colyseusClient.onTroopDamage((msg) => {
     const m = troopRegistry.get(msg.id);
     if (!m) return;
-
     const attacker = troopRegistry.get(msg.attackerId);
     if (attacker && attacker.ownerId === colyseusClient.sessionId) return;
 
     if (attacker && projectileManager) {
       const action = getActionForTroop(attacker.troopType, 'attack', msg.damage);
+
+      if (action?.sound) {
+        SoundManager.play(action.sound, attacker.sprite.x, attacker.sprite.y);
+      }
+
       if (action?.projectilePath) {
         const targetScreenPos = tileToScreen(m.tileX, m.tileY, mapData);
         const targetY = targetScreenPos.y + mapData.tileheight / 2 + ((troopDefs as any)[m.troopType]?.spriteYOffset ?? 0);
@@ -251,11 +252,11 @@ export function initTroopSync(
   });
 }
 
-function getAllAttackActions(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string }[] {
+function getAllAttackActions(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string; sound?: string }[] {
   const def = troopDefs[type] as any;
   if (!def.actions) return [];
 
-  const results: { damage: number; shots: number; shotDelay: number; projectilePath?: string }[] = [];
+  const results: { damage: number; shots: number; shotDelay: number; projectilePath?: string; sound?: string }[] = [];
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
     if (action && action.type === 'attack') {
@@ -264,6 +265,7 @@ function getAllAttackActions(type: TroopType): { damage: number; shots: number; 
         shots: action.shots ?? 1,
         shotDelay: action.shotDelay ?? 200,
         projectilePath: action.projectilePath,
+        sound: action.sound,
       });
     }
   }
@@ -345,6 +347,7 @@ export async function spawnCharacter(
       selectionRadius: def.selectionRadius,
       attackRadius: def.attackRadius,
       treeSwapRadius: def.treeSwapRadius,
+      visionRadius: (def as any).visionRadius ?? 5,
       spritePath: def.spritePath,
       spriteYOffset: yOffset,
       footprint: (def as any).footprint ?? { forward: 0, backward: 0, left: 0, right: 0 },
@@ -389,7 +392,12 @@ export async function spawnCharacter(
     movement.ownerId = colyseusClient.sessionId;
 
     const originalMoveTo = movement.moveTo.bind(movement);
+    const moveSound = (def as any).moveSound as string | undefined;
     movement.moveTo = (tx: number, ty: number) => {
+      if (moveSound) {
+        const pos = tileToScreen(movement.tileX, movement.tileY, mapData);
+        SoundManager.play(moveSound, pos.x, pos.y);
+      }
       originalMoveTo(tx, ty);
       colyseusClient.moveTroop(troopId, tx, ty);
     };
@@ -434,6 +442,11 @@ export async function spawnCharacter(
         originalOpenAttack(
           (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => {
             colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, shots);
+
+            if (matchedAction.sound) {
+              const screenPos = tileToScreen(movement.tileX, movement.tileY, mapData);
+              SoundManager.play(matchedAction.sound, screenPos.x, screenPos.y);
+            }
 
             const enemy = CharacterMovement.getEnemyAtTile(targetTileX, targetTileY);
             if (enemy) {
@@ -480,7 +493,14 @@ function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovem
         if (target.health <= 0) return;
         target.takeDamage(damagePerHit);
         target.floatingHealthBar?.setHealth(target.health);
+
+        const hitPos = tileToScreen(target.tileX, target.tileY, mapData);
+        SoundManager.play('troop_hit', hitPos.x, hitPos.y);
+
         if (target.health <= 0) {
+          const deathSound = (troopDefs as any)[target.troopType]?.deathSound;
+          if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
+
           if (target.troopType === 'general') {
             const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
             fireGameOver(!isLocalGeneral);
@@ -496,7 +516,14 @@ function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovem
       if (hitsRemaining <= 0 || target.health <= 0) return;
       target.takeDamage(damagePerHit);
       hitsRemaining--;
+
+      const hitPos = tileToScreen(target.tileX, target.tileY, mapData);
+      SoundManager.play('troop_hit', hitPos.x, hitPos.y);
+
       if (target.health <= 0) {
+        const deathSound = (troopDefs as any)[target.troopType]?.deathSound;
+        if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
+
         if (target.troopType === 'general') {
           const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
           fireGameOver(!isLocalGeneral);
@@ -573,9 +600,7 @@ function getActionForTroop(type: string, actionType: string, damage?: number): a
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
     if (action && action.type === actionType) {
-      // If damage hint provided, try to match the exact action
       if (damage !== undefined && action.damage === damage) return action;
-      // Keep the first match as fallback
       if (!fallback) fallback = action;
     }
   }

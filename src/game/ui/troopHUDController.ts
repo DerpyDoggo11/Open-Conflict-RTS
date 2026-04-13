@@ -43,15 +43,11 @@ export class TroopHUDController {
   mount(): void {
     this.viewport.eventMode = 'static';
     this.viewport.on('pointerup', () => {
-      // Suppress deselect right after selecting a troop
       if (this._justSelected) {
         this._justSelected = false;
         return;
       }
 
-      // Suppress deselect right after an action (move/attack) was executed.
-      // The tile click that triggered the action also bubbles here as pointerup;
-      // without this guard the HUD would be destroyed and cooldowns lost.
       if (this._justActed) {
         this._justActed = false;
         return;
@@ -67,12 +63,15 @@ export class TroopHUDController {
   }
 
   selectTroop(character: CharacterMovement): void {
-    if (this.selected === character) return;
     this._justSelected = true;
-
-    this.deselect();
     this.selected = character;
     this.mode = 'idle';
+
+    if (this.hud) {
+      this.hud.show();
+      this.hud.setHealth(character.health, character.maxHealth);
+      return;
+    }
 
     const isOwned = character.ownerId === colyseusClient.sessionId;
     const def = troopDefs[character.troopType as keyof typeof troopDefs];
@@ -104,11 +103,11 @@ export class TroopHUDController {
       actions,
       cooldownSpritePath: "/assets/ui/iconCooldown.png",
     });
-    
+
     document.getElementById('app')!.appendChild(this.hud.element);
     requestAnimationFrame(() => {
-        this.hud?.show();
-        this.hud?.setHealth(character.health, character.maxHealth);
+      this.hud?.show();
+      this.hud?.setHealth(character.health, character.maxHealth);
     });
 
     character.onHealthChange((hp) => {
@@ -123,7 +122,6 @@ export class TroopHUDController {
     this.selected = null;
     prev.close();
     this.hud?.hide();
-    setTimeout(() => { this.hud?.destroy(); this.hud = null; }, 160);
   }
 
   private _toggleMove(actionId: string = 'move'): void {
@@ -149,7 +147,7 @@ export class TroopHUDController {
 
     this.selected.openMove();
   }
-    
+
   private _toggleAttack(actionId: string, damage: number, shots: number): void {
     if (!this.selected) return;
 
@@ -166,14 +164,13 @@ export class TroopHUDController {
     this.hud?.setActiveAction(actionId);
 
     const capturedActionId = actionId;
-    const hudRef = this.hud;
     const self = this;
 
     this.selected.openAttack(
       (attackerId: string, targetTileX: number, targetTileY: number, dmg: number, s: number) => {
         self._justActed = true;
         self._exitMode();
-        hudRef?.startCooldown(capturedActionId);
+        self.hud?.startCooldown(capturedActionId);
       },
       damage,
       shots,
