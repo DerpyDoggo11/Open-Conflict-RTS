@@ -1,4 +1,5 @@
 import { Callbacks, Client, Room } from "@colyseus/sdk";
+import { SERVER_HTTP_URL, SERVER_WS_URL } from "./serverConfig";
 
 export interface ChatMessage {
   playerId: string; name: string; text: string; timestamp: number;
@@ -37,7 +38,7 @@ export class ColyseusClient {
 
 
   constructor() {
-    this.client = new Client("ws://localhost:2567");
+    this.client = new Client(SERVER_WS_URL);
   }
 
   async joinGame(playerName: string): Promise<void> {
@@ -168,7 +169,7 @@ export class ColyseusClient {
 
   async getRooms(): Promise<{ roomId: string; clients: number; maxClients: number }[]> {
     try {
-      const res = await fetch("http://localhost:2567/rooms");
+      const res = await fetch(`${SERVER_HTTP_URL}/rooms`);
       if (!res.ok) return [];
       return await res.json();
     } catch { return []; }

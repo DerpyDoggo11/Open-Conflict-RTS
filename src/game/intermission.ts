@@ -14,6 +14,7 @@ import troopDefs from './data/troops.json';
 import { colyseusClient } from './network/colyseusClient';
 import type { CharacterMovement } from './entities/entityMovement';
 import { GameOverOverlay } from '../overlayUI/overlays/gameOverOverlay';
+import { LOBBY_URL } from './network/serverConfig';
 
 export const troopRegistry = new Map<string, CharacterMovement>();
 
@@ -21,8 +22,6 @@ const troopDefsArray = Object.entries(troopDefs).map(([key, def]) => ({
   type: key,
   ...(def as any),
 }));
-
-const MAIN_MENU_URL = 'http://localhost:5173/';
 
 export class Intermission {
   private credits: number = 100;
@@ -102,7 +101,7 @@ export class Intermission {
 
     const overlay = new GameOverOverlay({
       isVictory,
-      mainMenuUrl: MAIN_MENU_URL,
+      mainMenuUrl: LOBBY_URL,
       redirectDelay: 8000,
     });
     overlay.mount();

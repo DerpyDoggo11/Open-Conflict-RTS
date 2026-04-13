@@ -99,26 +99,34 @@ function tiledPixelToTile(
 }
 
 let nonWalkableGids: Set<number> = new Set();
+let blockingObjectGids: Set<number> = new Set();
 
 export function initWalkableGids(mapData: TiledMap): void {
   nonWalkableGids = new Set();
+  blockingObjectGids = new Set();
 
-  // Tileset names whose ground tiles are impassable
-  const blockNames = ['water', 'stone'];
+  const groundBlockKeywords = ['water'];
+  //const objectBlockKeywords = ['mountain'];
 
   for (const tileset of mapData.tilesets) {
-    if (tileset.name && blockNames.includes(tileset.name.toLowerCase())) {
-      // Add all GIDs belonging to this tileset
-      const tileCount = (tileset.imagewidth && tileset.tilewidth)
-        ? Math.floor(tileset.imagewidth / tileset.tilewidth) *
-          Math.floor(tileset.imageheight! / tileset.tileheight!)
-        : 1;
+    if (!tileset.name) continue;
+    const nameLower = tileset.name.toLowerCase();
+
+    const tileCount = (tileset.imagewidth && tileset.tilewidth)
+      ? Math.floor(tileset.imagewidth / tileset.tilewidth) *
+        Math.floor(tileset.imageheight! / tileset.tileheight!)
+      : 1;
+
+    // Check ground-layer blocking
+    if (groundBlockKeywords.some(k => nameLower.includes(k))) {
       for (let i = 0; i < tileCount; i++) {
         nonWalkableGids.add(tileset.firstgid + i);
       }
     }
+
   }
-  console.log('[tilemapUtils] Non-walkable GIDs:', [...nonWalkableGids]);
+  console.log('[tilemapUtils] Non-walkable ground GIDs:', [...nonWalkableGids]);
+  console.log('[tilemapUtils] Blocking object GIDs:', [...blockingObjectGids]);
 }
 
 export function isTileInWalkableBounds(
@@ -126,8 +134,14 @@ export function isTileInWalkableBounds(
   tileY: number,
   mapData: TiledMap
 ): boolean {
+  // Check ground layer
   const groundGid = getChunkedTileGid(tileX, tileY, mapData, 'Ground');
   if (groundGid === 0) return false;
   if (nonWalkableGids.has(groundGid)) return false;
+
+  // Check objects layer — mountains, rocks, etc. also block movement
+  const objectGid = getChunkedTileGid(tileX, tileY, mapData, 'Objects');
+  if (objectGid !== 0 && blockingObjectGids.has(objectGid)) return false;
+
   return true;
 }
