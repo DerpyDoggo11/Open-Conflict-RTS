@@ -14,8 +14,10 @@ interface ActionDef {
   iconPath: string;
   type: ActionType;
   damage?: number;
-  fireRate?: number;
+  shots?: number;
+  shotDelay?: number;
   cooldown?: number;
+  projectilePath?: string;
 }
 
 export type ActionMode = 'idle' | 'move' | 'attack';
@@ -25,8 +27,10 @@ export class TroopHUDController {
   private selected: CharacterMovement | null = null;
   private mode: ActionMode = 'idle';
   private _pendingDamage: number = 0;
+  private _pendingShots: number = 1;
   private _activeAttackActionId: string | null = null;
   private _justSelected = false;
+  private _justActed = false;
 
   constructor(
     private app: PIXI.Application,
@@ -39,14 +43,22 @@ export class TroopHUDController {
   mount(): void {
     this.viewport.eventMode = 'static';
     this.viewport.on('pointerup', () => {
+      // Suppress deselect right after selecting a troop
       if (this._justSelected) {
         this._justSelected = false;
         return;
       }
 
+      // Suppress deselect right after an action (move/attack) was executed.
+      // The tile click that triggered the action also bubbles here as pointerup;
+      // without this guard the HUD would be destroyed and cooldowns lost.
+      if (this._justActed) {
+        this._justActed = false;
+        return;
+      }
+
       if (this.mode !== 'idle') {
         this._exitMode();
-        this.deselect();
         return;
       }
 
@@ -79,7 +91,7 @@ export class TroopHUDController {
           if (actionDef.type === 'move') {
             this._toggleMove(actionId);
           } else if (actionDef.type === 'attack') {
-            this._toggleAttack(actionId, actionDef.damage ?? 0);
+            this._toggleAttack(actionId, actionDef.damage ?? 20, actionDef.shots ?? 1);
           }
         },
       };
@@ -127,16 +139,18 @@ export class TroopHUDController {
     this.hud?.setActiveAction(actionId);
 
     const originalMoveTo = this.selected.moveTo.bind(this.selected);
+    const self = this;
     this.selected.moveTo = (tx: number, ty: number) => {
       originalMoveTo(tx, ty);
-      this._exitMode();
-      this.hud?.startCooldown(actionId);
+      self._justActed = true;
+      self._exitMode();
+      self.hud?.startCooldown(actionId);
     };
 
     this.selected.openMove();
   }
     
-  private _toggleAttack(actionId: string, damage: number): void {
+  private _toggleAttack(actionId: string, damage: number, shots: number): void {
     if (!this.selected) return;
 
     if (this.mode === 'attack' && this._activeAttackActionId === actionId) {
@@ -147,20 +161,22 @@ export class TroopHUDController {
     this._exitMode();
     this.mode = 'attack';
     this._pendingDamage = damage;
+    this._pendingShots = shots;
     this._activeAttackActionId = actionId;
     this.hud?.setActiveAction(actionId);
 
     const capturedActionId = actionId;
     const hudRef = this.hud;
-    const selected = this.selected;
-
-    const originalOpenAttack = selected.openAttack.bind(selected);
-    const originalClose = selected.close;
-
     const self = this;
-    selected.openAttack(
-      undefined,
+
+    this.selected.openAttack(
+      (attackerId: string, targetTileX: number, targetTileY: number, dmg: number, s: number) => {
+        self._justActed = true;
+        self._exitMode();
+        hudRef?.startCooldown(capturedActionId);
+      },
       damage,
+      shots,
     );
   }
 
@@ -170,6 +186,7 @@ export class TroopHUDController {
     this.mode = 'idle';
     this._activeAttackActionId = null;
     this._pendingDamage = 0;
+    this._pendingShots = 1;
     this.hud?.setActiveAction(null);
   }
 }

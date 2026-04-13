@@ -1,0 +1,96 @@
+/* ── Game Over Overlay ── */
+
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.game-over-overlay--open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.game-over-overlay__panel {
+  /* Same background treatment as .intermission-troop-selector__panel */
+  background-image: var(--intermission-troop-selector-bg);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  width: clamp(260px, 28vw, 340px);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.game-over-overlay__image {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.game-over-overlay__title {
+  font-family: var(--font-game);
+  font-size: var(--font-size-xl, 28px);
+  margin: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.game-over-overlay__title--victory {
+  color: #ffd700;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+.game-over-overlay__title--defeat {
+  color: #ff4d4d;
+  text-shadow: 0 0 12px rgba(255, 77, 77, 0.4);
+}
+
+.game-over-overlay__subtitle {
+  font-family: var(--font-game);
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.game-over-overlay__btn {
+  font-family: var(--font-game);
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-primary);
+  background: rgba(200, 212, 220, 0.1);
+  border: 1px solid rgba(200, 212, 220, 0.3);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  margin-top: var(--space-sm);
+}
+
+.game-over-overlay__btn:hover {
+  background: rgba(200, 212, 220, 0.2);
+  border-color: rgba(200, 212, 220, 0.55);
+}
+
+.game-over-overlay__countdown {
+  font-family: var(--font-game);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+@media (max-width: 500px) {
+  .game-over-overlay__panel {
+    width: 90%;
+  }
+}

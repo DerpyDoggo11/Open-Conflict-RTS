@@ -77,12 +77,12 @@ function pointInPolygon(
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const xi = polygon[i].x,
-      yi = polygon[i].y;
+          yi = polygon[i].y;
     const xj = polygon[j].x,
-      yj = polygon[j].y;
+          yj = polygon[j].y;
     const intersect =
-      yi > py !== yj > py &&
-      px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
+          yi > py !== yj > py &&
+          px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
@@ -102,10 +102,20 @@ let nonWalkableGids: Set<number> = new Set();
 
 export function initWalkableGids(mapData: TiledMap): void {
   nonWalkableGids = new Set();
-  const blockNames = ['water'];
+
+  // Tileset names whose ground tiles are impassable
+  const blockNames = ['water', 'stone'];
+
   for (const tileset of mapData.tilesets) {
-    if (tileset.name && blockNames.includes(tileset.name)) {
-      nonWalkableGids.add(tileset.firstgid);
+    if (tileset.name && blockNames.includes(tileset.name.toLowerCase())) {
+      // Add all GIDs belonging to this tileset
+      const tileCount = (tileset.imagewidth && tileset.tilewidth)
+        ? Math.floor(tileset.imagewidth / tileset.tilewidth) *
+          Math.floor(tileset.imageheight! / tileset.tileheight!)
+        : 1;
+      for (let i = 0; i < tileCount; i++) {
+        nonWalkableGids.add(tileset.firstgid + i);
+      }
     }
   }
   console.log('[tilemapUtils] Non-walkable GIDs:', [...nonWalkableGids]);

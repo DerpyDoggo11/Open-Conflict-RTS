@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { type TiledMap } from './types/tilemapTypes';
-import { revealAllEnemies, setIntermissionComplete, spawnCharacter, type TroopType } from './entities/entityUtils';
+import { revealAllEnemies, setIntermissionComplete, spawnCharacter, onGameOver, type TroopType } from './entities/entityUtils';
 import { TimerBanner } from '../overlayUI/components/timerBannerWidget';
 import { ReadyWidget } from '../overlayUI/components/readyWidget';
 import { IntermissionTroopSelectorOverlay } from '../overlayUI/overlays/intermissionTroopSelectorOverlay';
@@ -13,6 +13,7 @@ import {
 import troopDefs from './data/troops.json';
 import { colyseusClient } from './network/colyseusClient';
 import type { CharacterMovement } from './entities/entityMovement';
+import { GameOverOverlay } from '../overlayUI/overlays/gameOverOverlay';
 
 export const troopRegistry = new Map<string, CharacterMovement>();
 
@@ -21,9 +22,9 @@ const troopDefsArray = Object.entries(troopDefs).map(([key, def]) => ({
   ...(def as any),
 }));
 
+const MAIN_MENU_URL = 'http://localhost:5173/';
+
 export class Intermission {
-  private placedCount: number = 0;
-  private readonly maxTroops = 4;
   private credits: number = 100;
 
   private overlay!: HTMLElement;
@@ -32,6 +33,7 @@ export class Intermission {
   private intermissionSelector!: IntermissionTroopSelectorOverlay;
 
   private _intermissionComplete = false;
+  private _gameOverShown = false;
 
   private pendingTile: { tileX: number; tileY: number } | null = null;
   private onComplete: () => void;
@@ -57,74 +59,123 @@ export class Intermission {
     private hudContainer: PIXI.Container,
     private objectsContainer: PIXI.Container,
     private spawnZone: { x: number; y: number; w: number; h: number },
+    private generalSpawn: { tileX: number; tileY: number },
     onComplete: () => void,
   ) {
     this.onComplete = onComplete;
 
     initSpawnZone(objectsContainer);
-    
+
     this._buildOverlay();
     this._buildIntermissionSelectorOverlay();
     this._bindServerEvents();
+    this._bindGameOverEvents();
+
+    // Auto-spawn the general at the caller-specified position
+    this._autoSpawnGeneral();
 
     this._refreshSpawnZone();
   }
 
+  /* ── Auto-spawn general ── */
+
+  private async _autoSpawnGeneral(): Promise<void> {
+    const { tileX, tileY } = this.generalSpawn;
+
+    await this._spawnTroop('general' as TroopType, tileX, tileY);
+  }
+
+  /* ── Game-over handling ── */
+
+  private _bindGameOverEvents(): void {
+    // Use the centralized game-over event from entityUtils.
+    // This fires from ALL kill paths: local applyMultiHitDamage,
+    // server troopDamage, server troopDied — whichever triggers first.
+    onGameOver((isVictory: boolean) => {
+      this._showGameOver(isVictory);
+    });
+  }
+
+  private _showGameOver(isVictory: boolean): void {
+    if (this._gameOverShown) return;
+    this._gameOverShown = true;
+
+    const overlay = new GameOverOverlay({
+      isVictory,
+      mainMenuUrl: MAIN_MENU_URL,
+      redirectDelay: 8000,
+    });
+    overlay.mount();
+  }
+
+  /* ── Spawn zone ── */
+
   private _refreshSpawnZone(): void {
-  const gids = getMapGids();
-  spawnSpawnZone(
-    this.tilesetTextures,
-    this.spawnZone,
-    gids.spawnTile,
-    this.mapData,
-    (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
-  );
-}
+    const gids = getMapGids();
+    spawnSpawnZone(
+      this.tilesetTextures,
+      this.spawnZone,
+      gids.spawnTile,
+      this.mapData,
+      (tileX, tileY) => this.onSpawnTileClick(tileX, tileY),
+    );
+  }
 
   private onSpawnTileClick(tileX: number, tileY: number): void {
-    if (this.placedCount >= this.maxTroops) return;
+    if (this.credits <= 0) return;
     this.pendingTile = { tileX, tileY };
+    this.intermissionSelector.setCredits(this.credits);
     this.intermissionSelector.open();
   }
 
   private async _spawnTroop(type: TroopType, tileX: number, tileY: number): Promise<void> {
-    await spawnCharacter(
+    const movement = await spawnCharacter(
       type, tileX, tileY,
       this.mapData, this.hudContainer,
       this.app, this.viewport, this.objectsContainer, this.tilesetTextures,
       true,
     );
 
-    this.placedCount++;
-    const remaining = document.getElementById('troops-remaining');
-    if (remaining) {
-      remaining.textContent = `${this.maxTroops - this.placedCount} remaining`;
+    // Wire up local general death detection (health listener)
+    if (type === 'general') {
+      movement.onHealthChange((hp) => {
+        if (hp <= 0) {
+          this._showGameOver(false); // our general died → defeat
+        }
+      });
     }
 
     this._refreshSpawnZone();
   }
 
   private _buildIntermissionSelectorOverlay(): void {
-    const troopOptions = troopDefsArray.map(t => ({
-      type: t.type as TroopType,
-      label: t.name ?? t.type,
-      cost: t.cost ?? 0,
-      iconPath: t.portraitPath ?? undefined,
-    }));
+    // Filter OUT the general — it is auto-spawned and cannot be manually selected
+    const troopOptions = troopDefsArray
+      .filter(t => t.type !== 'general')
+      .map(t => ({
+        type: t.type as TroopType,
+        label: t.name ?? t.type,
+        cost: t.cost ?? 0,
+        iconPath: t.portraitPath ?? undefined,
+      }));
 
     this.intermissionSelector = new IntermissionTroopSelectorOverlay({
       troops: troopOptions,
       credits: this.credits,
       onSelect: async (type) => {
         if (!this.pendingTile) return;
+
+        const troopDef = troopDefsArray.find(t => t.type === type);
+        const cost = troopDef?.cost ?? 0;
+
+        // Can't afford this troop
+        if (cost > this.credits) return;
+
         const { tileX, tileY } = this.pendingTile;
         this.pendingTile = null;
 
-        const troopDef = troopDefsArray.find(t => t.type === type);
-        if (troopDef?.cost) {
-          this.credits -= troopDef.cost;
-          this.intermissionSelector.setCredits(this.credits);
-        }
+        this.credits -= cost;
+        this.intermissionSelector.setCredits(this.credits);
 
         await this._spawnTroop(type as TroopType, tileX, tileY);
       },

@@ -317,9 +317,39 @@ export function clearSpawnZone(): void {
   }
 }
 
-/* ── Trees ── */
+/* ── Trees / Objects ── */
 
 const treeSprites: Map<string, PIXI.Sprite> = new Map();
+
+/**
+ * Build a set of GIDs that belong to tilesets whose names contain any of
+ * the given keywords. Used to identify which object tiles are trees vs mountains.
+ */
+function getGidsForTilesetNames(
+  mapData: TiledMap,
+  keywords: string[],
+): Set<number> {
+  const gids = new Set<number>();
+  const sortedTilesets = [...mapData.tilesets].sort((a, b) => a.firstgid - b.firstgid);
+
+  for (let i = 0; i < sortedTilesets.length; i++) {
+    const ts = sortedTilesets[i];
+    if (!ts.name) continue;
+    const nameLower = ts.name.toLowerCase();
+    const matches = keywords.some(k => nameLower.includes(k));
+    if (!matches) continue;
+
+    // Determine how many GIDs this tileset covers
+    const nextFirstGid = (i + 1 < sortedTilesets.length)
+      ? sortedTilesets[i + 1].firstgid
+      : ts.firstgid + 9999; // large upper bound for last tileset
+
+    for (let gid = ts.firstgid; gid < nextFirstGid; gid++) {
+      gids.add(gid);
+    }
+  }
+  return gids;
+}
 
 export function initTrees(
   objectsContainer: PIXI.Container,
@@ -329,6 +359,12 @@ export function initTrees(
   objectsContainer.sortableChildren = true;
   const layer = mapData.layers.find(l => l.name === 'Objects');
   if (!layer?.chunks) return;
+
+  const hw = mapData.tilewidth / 2;
+  const hh = mapData.tileheight / 2;
+
+  // GIDs that should NEVER become transparent (mountains, rocks, etc.)
+  const nonTransparentGids = getGidsForTilesetNames(mapData, ['mountain', 'rock', 'cliff', 'stone']);
 
   for (const chunk of layer.chunks) {
     for (let localY = 0; localY < chunk.height; localY++) {
@@ -342,17 +378,27 @@ export function initTrees(
         const texture = tilesetTextures.get(gid);
         if (!texture) continue;
 
-        const sprite = new PIXI.Sprite(texture);
-        const footTileX = worldX + 1;
-        const footTileY = worldY + 1;
-        const footScreen = tileToScreen(footTileX, footTileY, mapData);
+        const isoX = (worldX - worldY) * hw;
+        const isoY = (worldX + worldY) * hh;
+        const tileH = texture.height;
+        const tileW = texture.width;
 
+        const sprite = new PIXI.Sprite(texture);
         sprite.anchor.set(0.5, 1);
-        sprite.position.set(footScreen.x, footScreen.y + mapData.tileheight / 2);
-        sprite.zIndex = footTileX + footTileY;
+        sprite.position.set(
+          isoX + tileW / 2,
+          isoY - (tileH - mapData.tileheight) + tileH
+        );
+
+        sprite.zIndex = worldX + worldY;
 
         objectsContainer.addChild(sprite);
-        treeSprites.set(`${worldX},${worldY}`, sprite);
+
+        // Only tree-like objects go into the transparency map.
+        // Mountains, rocks, etc. render normally but are never made transparent.
+        if (!nonTransparentGids.has(gid)) {
+          treeSprites.set(`${worldX},${worldY}`, sprite);
+        }
       }
     }
   }

@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { loadTiledMap } from './tilemap/tilemapLoader';
 // import { createOceanMesh } from './tilemap/oceanBackground';
-import { initTroopSync, preloadAllTroopAssets, spawnCharacter } from './entities/entityUtils';
+import { initTroopSync, preloadAllTroopAssets, setLocalTeamId, spawnCharacter } from './entities/entityUtils';
 import { setupCamera } from './entities/camera';
 import {
   clearArrow, clearSelection, drawArrowToTile,
@@ -14,8 +14,13 @@ import { initWalkableGids } from './tilemap/tilemapUtils';
 import { tileToScreen } from './tilemap/tilemapUtils';
 
 const TEAM_SPAWN_ZONES: Record<string, { x: number; y: number; w: number; h: number }> = {
-  Red:  { x: -9,  y: -4,  w: 3, h: 8 },
-  Blue: { x: 18, y: -4, w: 3, h: 8 },
+  Red:  { x: -9,  y: -4,  w: 3, h: 9 },
+  Blue: { x: 18, y: -4, w: 3, h: 9 },
+};
+
+const TEAM_GENERAL_SPAWNS: Record<string, { tileX: number; tileY: number }> = {
+  Red:  { tileX: -9, tileY: 0 },
+  Blue: { tileX: 20, tileY: 0 },
 };
 
 export async function initGame() {
@@ -64,7 +69,7 @@ export async function initGame() {
   } catch (e) {
     console.error('[initGame] Failed to preload troop assets:', e);
   }
-  
+
   try {
     await colyseusClient.joinGame(playerName);
     console.log('[initGame] joined game as', playerName);
@@ -106,7 +111,9 @@ export async function initGame() {
     }
 
     if (myTeam && !intermission) {
+      setLocalTeamId(myTeam);
       const spawnZone = TEAM_SPAWN_ZONES[myTeam] ?? TEAM_SPAWN_ZONES['Red'];
+      const generalSpawn = TEAM_GENERAL_SPAWNS[myTeam] ?? TEAM_GENERAL_SPAWNS['Red'];
 
       intermission = new Intermission(
         app,
@@ -116,6 +123,7 @@ export async function initGame() {
         hudContainer,
         objectsContainer,
         spawnZone,
+        generalSpawn,
         () => {
           console.log('Game started!');
         }

@@ -83,7 +83,6 @@ async function loadTroopTextures(spritePath: string, layout: 'grid' | 'vertical'
     return textures;
   }
 
-  // Ensure the texture source is actually loaded and has dimensions
   if (!idleSheet || !idleSheet.source || idleSheet.source.width === 0) {
     console.warn(`[entityUtils] Idle sheet loaded but has no dimensions: ${idlePath}`);
     return textures;
@@ -122,6 +121,24 @@ let intermissionComplete = false;
 
 let localTeamId = '';
 let projectileManager: ProjectileManager | null = null;
+
+/* ── Game-over listeners ── */
+
+type GameOverListener = (isVictory: boolean) => void;
+const gameOverListeners: GameOverListener[] = [];
+let gameOverFired = false;
+
+export function onGameOver(fn: GameOverListener): void {
+  gameOverListeners.push(fn);
+}
+
+function fireGameOver(isVictory: boolean): void {
+  if (gameOverFired) return;
+  gameOverFired = true;
+  gameOverListeners.forEach(fn => fn(isVictory));
+}
+
+/* ── Public helpers ── */
 
 export function setLocalTeamId(teamId: string): void {
   localTeamId = teamId;
@@ -172,70 +189,85 @@ export function initTroopSync(
 
   colyseusClient.onTroopDamage((msg) => {
     const m = troopRegistry.get(msg.id);
-    if (m) {
-      const attacker = troopRegistry.get(msg.attackerId);
-      if (attacker && attacker.ownerId !== colyseusClient.sessionId && projectileManager) {
-        const action = getActionForTroop(attacker.troopType, 'attack');
-        if (action?.projectilePath) {
-          const targetScreenPos = tileToScreen(m.tileX, m.tileY, mapData);
-          const targetY = targetScreenPos.y + mapData.tileheight / 2 + ((troopDefs as any)[m.troopType]?.spriteYOffset ?? 0);
-          projectileManager.spawn({
-            texturePath: action.projectilePath,
-            startX: attacker.sprite.x,
-            startY: attacker.sprite.y - (attacker.sprite.height / 2),
-            endX: targetScreenPos.x,
-            endY: targetY - (m.sprite.height / 2),
-            onImpact: () => {
-              m.health = msg.newHealth;
-              m.takeDamage(0);
-              m.health = msg.newHealth;
-              m.floatingHealthBar?.setHealth(m.health);
-              if (m.health <= 0) {
-                m.destroy();
-                troopRegistry.delete(msg.id);
-              }
-            },
-          });
-          return;
-        }
-      }
+    if (!m) return;
 
-      m.health = msg.newHealth;
-      m.takeDamage(0);
-      m.health = msg.newHealth;
-      m.floatingHealthBar?.setHealth(m.health);
-      if (m.health <= 0) {
-        m.destroy();
-        troopRegistry.delete(msg.id);
+    const attacker = troopRegistry.get(msg.attackerId);
+    if (attacker && attacker.ownerId === colyseusClient.sessionId) return;
+
+    if (attacker && projectileManager) {
+      const action = getActionForTroop(attacker.troopType, 'attack', msg.damage);
+      if (action?.projectilePath) {
+        const targetScreenPos = tileToScreen(m.tileX, m.tileY, mapData);
+        const targetY = targetScreenPos.y + mapData.tileheight / 2 + ((troopDefs as any)[m.troopType]?.spriteYOffset ?? 0);
+        projectileManager.spawn({
+          texturePath: action.projectilePath,
+          startX: attacker.sprite.x,
+          startY: attacker.sprite.y - (attacker.sprite.height / 2),
+          endX: targetScreenPos.x,
+          endY: targetY - (m.sprite.height / 2),
+          onImpact: () => {
+            m.health = msg.newHealth;
+            m.takeDamage(0);
+            m.health = msg.newHealth;
+            m.floatingHealthBar?.setHealth(m.health);
+            if (m.health <= 0) {
+              if (m.troopType === 'general') {
+                const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
+                fireGameOver(!isLocalGeneral);
+              }
+              m.destroy();
+              troopRegistry.delete(msg.id);
+            }
+          },
+        });
+        return;
       }
+    }
+
+    m.health = msg.newHealth;
+    m.takeDamage(0);
+    m.health = msg.newHealth;
+    m.floatingHealthBar?.setHealth(m.health);
+    if (m.health <= 0) {
+      if (m.troopType === 'general') {
+        const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
+        fireGameOver(!isLocalGeneral);
+      }
+      m.destroy();
+      troopRegistry.delete(msg.id);
     }
   });
 
   colyseusClient.onTroopDied((id) => {
     const m = troopRegistry.get(id);
     if (m) {
+      if (m.troopType === 'general') {
+        const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
+        fireGameOver(!isLocalGeneral);
+      }
       m.destroy();
       troopRegistry.delete(id);
     }
   });
 }
 
-function getAttackAction(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string } | null {
+function getAllAttackActions(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string }[] {
   const def = troopDefs[type] as any;
-  if (!def.actions) return null;
+  if (!def.actions) return [];
 
+  const results: { damage: number; shots: number; shotDelay: number; projectilePath?: string }[] = [];
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
     if (action && action.type === 'attack') {
-      return {
+      results.push({
         damage: action.damage ?? 20,
         shots: action.shots ?? 1,
         shotDelay: action.shotDelay ?? 200,
         projectilePath: action.projectilePath,
-      };
+      });
     }
   }
-  return null;
+  return results;
 }
 
 function troopHasShootAction(type: TroopType): boolean {
@@ -338,6 +370,15 @@ export async function spawnCharacter(
 
   if (isLocal) {
     movement.teamId = localTeamId;
+
+    if (localTeamId === 'Blue') {
+      movement.facingDx = -1;
+      movement.facingDy = 0;
+    } else {
+      movement.facingDx = 1;
+      movement.facingDy = 0;
+    }
+    movement.setTextures(troopTextures);
   }
 
   if (isLocal) {
@@ -378,14 +419,18 @@ export async function spawnCharacter(
   });
 
   if (isLocal) {
-    const attackAction = getAttackAction(type);
-    if (attackAction) {
+    const attackActions = getAllAttackActions(type);
+    if (attackActions.length > 0) {
       const originalOpenAttack = movement.openAttack.bind(movement);
       movement.openAttack = (
-        _onAttackTile?: any,
-        _damage?: number,
-        _shots?: number,
+        callerOnAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
+        callerDamage?: number,
+        callerShots?: number,
       ) => {
+        const matchedAction = attackActions.find(
+          a => a.damage === callerDamage && a.shots === callerShots
+        ) ?? attackActions[0];
+
         originalOpenAttack(
           (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => {
             colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, shots);
@@ -397,14 +442,16 @@ export async function spawnCharacter(
                 enemy,
                 damage,
                 shots,
-                attackAction.shotDelay,
-                attackAction.projectilePath,
+                matchedAction.shotDelay,
+                matchedAction.projectilePath,
                 mapData,
               );
             }
+
+            callerOnAttackTile?.(attackerId, targetTileX, targetTileY, damage, shots);
           },
-          attackAction.damage,
-          attackAction.shots,
+          matchedAction.damage,
+          matchedAction.shots,
         );
       };
     }
@@ -434,6 +481,10 @@ function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovem
         target.takeDamage(damagePerHit);
         target.floatingHealthBar?.setHealth(target.health);
         if (target.health <= 0) {
+          if (target.troopType === 'general') {
+            const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
+            fireGameOver(!isLocalGeneral);
+          }
           troopRegistry.delete(target.id);
           target.destroy();
         }
@@ -446,6 +497,10 @@ function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovem
       target.takeDamage(damagePerHit);
       hitsRemaining--;
       if (target.health <= 0) {
+        if (target.troopType === 'general') {
+          const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
+          fireGameOver(!isLocalGeneral);
+        }
         troopRegistry.delete(target.id);
         target.destroy();
         return;
@@ -489,10 +544,6 @@ export function assignTeamsToTroops(teams: { teamName: string; players: { id: st
   }
 }
 
-/**
- * Preload all troop spritesheets. Determines layout from scale:
- * scale >= 1 → vertical strip, otherwise → 3×3 grid.
- */
 export async function preloadAllTroopAssets(): Promise<void> {
   console.log('[entityUtils] Preloading troop spritesheets...');
   const types = Object.keys(troopDefs) as TroopType[];
@@ -514,12 +565,19 @@ export async function preloadAllTroopAssets(): Promise<void> {
   console.log('[entityUtils] Spritesheet preload complete.');
 }
 
-function getActionForTroop(type: string, actionType: string): any | null {
+function getActionForTroop(type: string, actionType: string, damage?: number): any | null {
   const def = (troopDefs as any)[type];
   if (!def?.actions) return null;
+
+  let fallback: any = null;
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
-    if (action && action.type === actionType) return action;
+    if (action && action.type === actionType) {
+      // If damage hint provided, try to match the exact action
+      if (damage !== undefined && action.damage === damage) return action;
+      // Keep the first match as fallback
+      if (!fallback) fallback = action;
+    }
   }
-  return null;
+  return fallback;
 }

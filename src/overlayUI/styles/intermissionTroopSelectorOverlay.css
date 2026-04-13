@@ -102,3 +102,15 @@
         width: 100%;
     }
 }
+
+.intermission-troop-selector__card--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+ 
+.intermission-troop-selector__card--disabled:hover {
+  border-color: rgba(200, 212, 220, 0.2);
+  background-color: transparent;
+}
+ 
