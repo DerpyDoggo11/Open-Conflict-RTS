@@ -14,7 +14,7 @@
   },
   "rifle": {
     "label": "Primary",
-    "iconPath": "/assets/actions/rifle/icon.png",
+    "iconPath": "/assets/actions/assaultRifle/icon.png",
     "type": "attack",
     "damage": 20,
     "shots": 3,
