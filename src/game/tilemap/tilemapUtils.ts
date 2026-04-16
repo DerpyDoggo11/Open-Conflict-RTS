@@ -98,33 +98,36 @@ function tiledPixelToTile(
   return { tileX, tileY };
 }
 
-let nonWalkableGids: Set<number> = new Set();
+let nonWalkableGroundTiles: Map<number, { ox: number; oy: number }> = new Map();
 let blockingObjectGids: Set<number> = new Set();
 
 export function initWalkableGids(mapData: TiledMap): void {
-  nonWalkableGids = new Set();
+  nonWalkableGroundTiles = new Map();
   blockingObjectGids = new Set();
-
-  const groundBlockKeywords = ['water'];
-  //const objectBlockKeywords = ['mountain'];
+  const groundBlockKeywords = ['water', 'stone'];
 
   for (const tileset of mapData.tilesets) {
     if (!tileset.name) continue;
     const nameLower = tileset.name.toLowerCase();
+    if (!groundBlockKeywords.some(k => nameLower.includes(k))) continue;
 
     const tileCount = (tileset.imagewidth && tileset.tilewidth)
       ? Math.floor(tileset.imagewidth / tileset.tilewidth) *
         Math.floor(tileset.imageheight! / tileset.tileheight!)
       : 1;
 
-    if (groundBlockKeywords.some(k => nameLower.includes(k))) {
-      for (let i = 0; i < tileCount; i++) {
-        nonWalkableGids.add(tileset.firstgid + i);
-      }
-    }
+    const extraHeight = (tileset.tileheight ?? mapData.tileheight) - mapData.tileheight;
+    const tileShift = Math.round(extraHeight / mapData.tileheight);
 
+    for (let i = 0; i < tileCount; i++) {
+      nonWalkableGroundTiles.set(tileset.firstgid + i, {
+        ox: tileShift,
+        oy: tileShift,
+      });
+    }
   }
-  console.log('[tilemapUtils] Non-walkable ground GIDs:', [...nonWalkableGids]);
+
+  console.log('[tilemapUtils] Non-walkable ground GIDs:', [...nonWalkableGroundTiles.keys()]);
   console.log('[tilemapUtils] Blocking object GIDs:', [...blockingObjectGids]);
 }
 
@@ -133,12 +136,14 @@ export function isTileInWalkableBounds(
   tileY: number,
   mapData: TiledMap
 ): boolean {
-  const groundGid = getChunkedTileGid(tileX, tileY, mapData, 'Ground');
+  const groundGid = getChunkedTileGid(tileX, tileY + 1, mapData, 'Ground');
   if (groundGid === 0) return false;
-  if (nonWalkableGids.has(groundGid)) return false;
+  if (nonWalkableGroundTiles.has(groundGid)) return false;
+
+  const shiftedGid = getChunkedTileGid(tileX, tileY + 1, mapData, 'Ground');
+  if (nonWalkableGroundTiles.has(shiftedGid)) return false;
 
   const objectGid = getChunkedTileGid(tileX, tileY, mapData, 'Objects');
   if (objectGid !== 0 && blockingObjectGids.has(objectGid)) return false;
-
   return true;
 }

@@ -26,7 +26,7 @@ export async function loadTiledMap(mapPath: string): Promise<{tilemaps: Map<stri
 
 
   const DIAMOND_WIDTH = mapData.tilewidth;
-  const DIAMOND_HEIGHT = mapData.tilewidth / 2;
+  const DIAMOND_HEIGHT = mapData.tileheight;
 
   const tilemaps: Map<string, CompositeTilemap> = new Map();
 

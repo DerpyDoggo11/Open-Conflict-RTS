@@ -342,7 +342,7 @@ export function initTrees(
   const hw = mapData.tilewidth / 2;
   const hh = mapData.tileheight / 2;
 
-  const nonTransparentGids = getGidsForTilesetNames(mapData, ['stone']);
+  const nonTransparentGids = getGidsForTilesetNames(mapData, ['stone', 'mountain']);
 
   for (const chunk of layer.chunks) {
     for (let localY = 0; localY < chunk.height; localY++) {
