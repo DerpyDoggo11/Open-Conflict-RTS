@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { TroopHUD } from '../../overlayUI/overlays/troopHUDOverlay';
-import { clearSelection, clearArrow } from '../entities/selectionUtils';
+import { clearSelection, clearArrow, isPointerOverActiveZone } from '../entities/selectionUtils';
 import { colyseusClient } from '../network/colyseusClient';
 import type { CharacterMovement } from '../entities/entityMovement';
 import type { TiledMap } from '../types/tilemapTypes';
@@ -17,6 +17,7 @@ interface ActionDef {
   shots?: number;
   shotDelay?: number;
   cooldown?: number;
+  splashRadius?: number;
   projectilePath?: string;
 }
 
@@ -42,14 +43,18 @@ export class TroopHUDController {
 
   mount(): void {
     this.viewport.eventMode = 'static';
-    this.viewport.on('pointerup', () => {
+    this.viewport.on('pointerup', (e: PIXI.FederatedPointerEvent) => {
       if (this._justSelected) {
         this._justSelected = false;
         return;
       }
-
       if (this._justActed) {
         this._justActed = false;
+        return;
+      }
+
+      const worldPos = this.viewport.toLocal(e.global);
+      if (isPointerOverActiveZone(worldPos.x, worldPos.y, this.mapData)) {
         return;
       }
 
@@ -57,7 +62,6 @@ export class TroopHUDController {
         this._exitMode();
         return;
       }
-
       this.deselect();
     });
   }
@@ -89,8 +93,13 @@ export class TroopHUDController {
 
           if (actionDef.type === 'move') {
             this._toggleMove(actionId);
-          } else if (actionDef.type === 'attack') {
-            this._toggleAttack(actionId, actionDef.damage ?? 20, actionDef.shots ?? 1);
+         } else if (actionDef.type === 'attack') {
+            this._toggleAttack(
+              actionId,
+              actionDef.damage ?? 20,
+              actionDef.shots ?? 1,
+              actionDef.splashRadius ?? 1,
+            );
           }
         },
       };
@@ -147,8 +156,8 @@ export class TroopHUDController {
 
     this.selected.openMove();
   }
-
-  private _toggleAttack(actionId: string, damage: number, shots: number): void {
+  
+  private _toggleAttack(actionId: string, damage: number, shots: number, splashRadius: number): void {
     if (!this.selected) return;
 
     if (this.mode === 'attack' && this._activeAttackActionId === actionId) {
@@ -167,13 +176,14 @@ export class TroopHUDController {
     const self = this;
 
     this.selected.openAttack(
-      (attackerId: string, targetTileX: number, targetTileY: number, dmg: number, s: number) => {
+      (_attackerId, _targetTileX, _targetTileY, _dmg, _s) => {
         self._justActed = true;
         self._exitMode();
         self.hud?.startCooldown(capturedActionId);
       },
       damage,
       shots,
+      splashRadius,
     );
   }
 

@@ -12,6 +12,18 @@
     "type": "repair",
     "cooldown": 5000
   },
+  "c4": {
+    "label": "Primary",
+    "iconPath": "/assets/actions/c4/icon.png",
+    "type": "attack",
+    "damage": 100,
+    "shots": 1,
+    "shotDelay": 0,
+    "cooldown": 15000,
+    "splashRadius": 1,
+    "projectilePath": "/assets/actions/c4/icon.png",
+    "sound": "tank_shell"
+  },
   "rifle": {
     "label": "Primary",
     "iconPath": "/assets/actions/assaultRifle/icon.png",
@@ -20,6 +32,7 @@
     "shots": 3,
     "shotDelay": 700,
     "cooldown": 10000,
+    "splashRadius": 1,
     "projectilePath": "/assets/actions/misc/bullet.png",
     "sound": "rifle_shot"
   },
@@ -31,17 +44,31 @@
     "shots": 6,
     "shotDelay": 500,
     "cooldown": 10000,
+    "splashRadius": 1,
     "projectilePath": "/assets/actions/misc/bullet.png",
     "sound": "machine_gun_shot"
   },
-  "tankShell": {
+  "lightShell": {
     "label": "Primary",
-    "iconPath": "/assets/actions/cannon/icon.png",
+    "iconPath": "/assets/actions/lightShell/icon.png",
+    "type": "attack",
+    "damage": 40,
+    "shots": 1,
+    "shotDelay": 0,
+    "cooldown": 10000,
+    "splashRadius": 1,
+    "projectilePath": "/assets/actions/misc/heavyBullet.png",
+    "sound": "tank_shell"
+  },
+  "heavyShell": {
+    "label": "Primary",
+    "iconPath": "/assets/actions/heavyShell/icon.png",
     "type": "attack",
     "damage": 60,
     "shots": 1,
     "shotDelay": 0,
     "cooldown": 15000,
+    "splashRadius": 3,
     "projectilePath": "/assets/actions/misc/heavyBullet.png",
     "sound": "tank_shell"
   }

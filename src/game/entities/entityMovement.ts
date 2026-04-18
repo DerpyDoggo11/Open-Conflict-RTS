@@ -5,8 +5,11 @@ import {
   clearArrow, clearSelection, drawArrowToTile,
   spawnSelectionRadius, updateTreeTransparency,
   getMapGids,
+  showSplashPreview,
+  clearSplashPreview,
 } from './selectionUtils';
 import type { FloatingHealthBar } from './floatingHealthBar';
+import { getActiveCamera } from './camera';
 
 const FACING_TO_DIR: Record<string, number> = {
   '0,1':  1,
@@ -246,13 +249,33 @@ export class CharacterMovement {
     const worldPos = vp.toLocal(e.global);
     const { tileX, tileY } = screenToTile(worldPos.x, worldPos.y, md);
 
+    let clicked: CharacterMovement | null = null;
     for (const char of CharacterMovement.allCharacters) {
       if (tileX === char.tileX && tileY === char.tileY) {
-        e.stopPropagation();
-        char.isSelected ? char.close() : char.open();
-        return;
+        clicked = char;
+        break;
       }
     }
+
+    if (!clicked) return;
+
+    e.stopPropagation();
+
+    if (clicked.isSelected) {
+      clicked.close();
+      return;
+    }
+
+    for (const other of CharacterMovement.allCharacters) {
+      if (other !== clicked && other.isSelected) {
+        other.close();
+      }
+    }
+
+    clicked.open();
+
+    const camera = getActiveCamera();
+    camera?.lerpTo(clicked.sprite.x, clicked.sprite.y - 32, 400);
   };
 
   private static onSharedPointerMove = (e: PIXI.FederatedPointerEvent): void => {
@@ -319,16 +342,28 @@ export class CharacterMovement {
       (tx, ty) => { this.moveTo(tx, ty); },
     );
   }
-
+  
   public openAttack(
     onAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
     damage: number = 20,
     shots: number = 1,
+    splashRadius: number = 1,
   ): void {
     clearSelection();
     clearArrow();
 
     const totalDamage = damage * shots;
+
+    const previewDamageFor = (enemy: CharacterMovement, hoverX: number, hoverY: number): number => {
+      let minDist = Infinity;
+      for (const tile of enemy.getOccupiedTiles()) {
+        const d = Math.abs(tile.tileX - hoverX) + Math.abs(tile.tileY - hoverY);
+        if (d < minDist) minDist = d;
+      }
+      if (minDist >= splashRadius) return 0;
+      const falloff = (splashRadius - minDist) / splashRadius;
+      return Math.round(totalDamage * falloff);
+    };
 
     spawnSelectionRadius(
       this.tilesetTextures, this.tileX, this.tileY,
@@ -336,13 +371,18 @@ export class CharacterMovement {
       this.mapData, this,
       (tx, ty) => {
         drawArrowToTile(this.tileX, this.tileY, tx, ty, this.mapData);
-        const enemy = CharacterMovement.getEnemyAtTile(tx, ty);
-        if (enemy?.floatingHealthBar) {
-          enemy.floatingHealthBar.showDamagePreview(totalDamage);
+        showSplashPreview(tx, ty, splashRadius, this.mapData);
+
+        for (const char of CharacterMovement.allCharacters) {
+          if (char.isLocal || !char.floatingHealthBar) continue;
+          const dmg = previewDamageFor(char, tx, ty);
+          if (dmg > 0) char.floatingHealthBar.showDamagePreview(dmg);
+          else char.floatingHealthBar.clearDamagePreview();
         }
       },
       () => {
         clearArrow();
+        clearSplashPreview();
         for (const char of CharacterMovement.allCharacters) {
           if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
         }
@@ -350,6 +390,7 @@ export class CharacterMovement {
       (tx, ty) => {
         clearSelection();
         clearArrow();
+        clearSplashPreview();
         for (const char of CharacterMovement.allCharacters) {
           if (!char.isLocal) char.floatingHealthBar?.clearDamagePreview();
         }

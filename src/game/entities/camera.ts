@@ -1,5 +1,11 @@
 import * as PIXI from 'pixi.js';
 
+let activeCameraController: CameraController | null = null;
+
+export function getActiveCamera(): CameraController | null {
+  return activeCameraController;
+}
+
 export interface CameraController {
   lerpTo(worldX: number, worldY: number, durationMs?: number): Promise<void>;
   centerOn(worldX: number, worldY: number): void;
@@ -101,7 +107,6 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
     }
   });
 
-  // --- Mouse wheel zoom ---
   app.canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
 
@@ -225,6 +230,7 @@ export function setupCamera(app: PIXI.Application, viewport: PIXI.Container): Ca
       viewport.position.y = app.screen.height / 2 - worldY * viewport.scale.y;
     },
   };
-
+  
+  activeCameraController = controller;
   return controller;
 }

@@ -22,6 +22,21 @@ export interface TroopDamageMsg {
   id: string; newHealth: number; damage: number; attackerId: string;
 }
 
+export interface SplashDamageVictim {
+  id: string;
+  newHealth: number;
+  totalDamage: number;
+}
+
+export interface SplashDamageMsg {
+  attackerId: string;
+  targetTileX: number;
+  targetTileY: number;
+  shots: number;
+  projectileDamage: number;
+  victims: SplashDamageVictim[];
+}
+
 export class ColyseusClient {
   private client: Client;
   private room: Room | null = null;
@@ -34,6 +49,7 @@ export class ColyseusClient {
   private troopSpawnListeners: ((msg: TroopSpawnMsg) => void)[] = [];
   private troopDiedListeners: ((id: string) => void)[] = [];
   private troopDamageListeners: ((msg: TroopDamageMsg) => void)[] = [];
+  private splashDamageListeners: ((msg: SplashDamageMsg) => void)[] = [];
   private _seenTroopIds = new Set<string>();
 
 
@@ -46,6 +62,7 @@ export class ColyseusClient {
     this.troopMoveListeners = [];
     this.troopDiedListeners = [];
     this.troopDamageListeners = [];
+    this.splashDamageListeners = [];
     this.tickListeners = [];
     this.playerCountListeners = [];
     this.gameStartListeners = [];
@@ -59,7 +76,7 @@ export class ColyseusClient {
       this.room = roomId
         ? await this.client.joinById(roomId, { name: playerName })
         : await this.client.joinOrCreate("game_room", { name: playerName });
-      
+
       this.room.onMessage("chat", (msg: ChatMessage) => {
         this.chatListeners.forEach(fn => fn(msg));
       });
@@ -77,6 +94,9 @@ export class ColyseusClient {
       });
       this.room.onMessage("troopDamage", (msg: TroopDamageMsg) => {
         this.troopDamageListeners.forEach(fn => fn(msg));
+      });
+      this.room.onMessage("splashDamage", (msg: SplashDamageMsg) => {
+        this.splashDamageListeners.forEach(fn => fn(msg));
       });
       this.room.onMessage("playerReady", (msg: { readyCount: number; totalCount: number }) => {
         this.readyStateListeners.forEach(fn => fn(msg.readyCount,msg.totalCount));
@@ -140,6 +160,19 @@ export class ColyseusClient {
     this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, fireRate: shots });
   }
 
+  sendSplashAttackTile(
+    attackerId: string,
+    targetTileX: number,
+    targetTileY: number,
+    damage: number,
+    shots: number,
+    splashRadius: number,
+  ): void {
+    this.room?.send('splashAttackTile', {
+      attackerId, targetTileX, targetTileY, damage, fireRate: shots, splashRadius,
+    });
+  }
+
   onReadyStateChange(fn: (readyCount: number, totalCount: number) => void): void {
     this.readyStateListeners.push(fn);
   }
@@ -161,6 +194,7 @@ export class ColyseusClient {
   onTroopMove(fn: (msg: TroopMoveMsg) => void): void { this.troopMoveListeners.push(fn); }
   onTroopDied(fn: (id: string) => void): void { this.troopDiedListeners.push(fn); }
   onTroopDamage(fn: (msg: TroopDamageMsg) => void): void { this.troopDamageListeners.push(fn); }
+  onSplashDamage(fn: (msg: SplashDamageMsg) => void): void { this.splashDamageListeners.push(fn); }
   onTick(fn: (tick: TickMessage) => void): void { this.tickListeners.push(fn); }
   onGameStart(fn: () => void): void { this.gameStartListeners.push(fn); }
   onPlayerCount(fn: (count: number, max: number) => void): void { this.playerCountListeners.push(fn); }

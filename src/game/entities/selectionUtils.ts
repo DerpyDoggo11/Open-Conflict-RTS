@@ -244,6 +244,7 @@ export function clearSelection(): void {
     for (const sprite of activeSelectionZone.sprites.values()) sprite.destroy();
     activeSelectionZone = null;
   }
+  clearSplashPreview();
   hoveredTileKey = null;
 }
 
@@ -396,4 +397,67 @@ export function updateTreeTransparency(
 
     sprite.alpha = shouldBeTransparent ? 0.35 : 1;
   }
+}
+
+
+const splashPreviewSprites: PIXI.Graphics[] = [];
+
+export function showSplashPreview(
+  centerTileX: number,
+  centerTileY: number,
+  splashRadius: number,
+  mapData: TiledMap,
+): void {
+  clearSplashPreview();
+  if (splashRadius <= 1 || !selectionContainer) return;
+
+  selectionContainer.sortableChildren = true;
+
+  const hw = mapData.tilewidth / 2;
+  const hh = mapData.tileheight / 2;
+  const maxExtra = splashRadius - 1;
+
+  for (let dx = -maxExtra; dx <= maxExtra; dx++) {
+    for (let dy = -maxExtra; dy <= maxExtra; dy++) {
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist > maxExtra) continue;
+
+      const tileX = centerTileX + dx;
+      const tileY = centerTileY + dy;
+      const screenPos = tileToScreen(tileX, tileY, mapData);
+
+      const falloff = (splashRadius - dist) / splashRadius;
+      const alpha = 0.3 + falloff * 0.5;
+
+      const g = new PIXI.Graphics();
+      g.moveTo(0, -hh)
+        .lineTo(hw, 0)
+        .lineTo(0, hh)
+        .lineTo(-hw, 0)
+        .closePath()
+        .fill({ color: 0xffdd33, alpha });
+
+      g.position.set(screenPos.x, screenPos.y);
+      g.zIndex = 100000; 
+      g.eventMode = 'none';
+
+      selectionContainer.addChild(g);
+      splashPreviewSprites.push(g);
+    }
+  }
+}
+
+export function clearSplashPreview(): void {
+  for (const g of splashPreviewSprites) g.destroy();
+  splashPreviewSprites.length = 0;
+}
+
+export function isPointerOverActiveZone(
+  worldX: number,
+  worldY: number,
+  mapData: TiledMap
+): boolean {
+  const { tileX, tileY } = screenToTile(worldX, worldY, mapData);
+  const key = `${tileX},${tileY}`;
+  return !!(activeSelectionZone?.tiles.has(key) || activeSpawnZone?.tiles.has(key));
 }

@@ -6,7 +6,7 @@
     "cost": 0,
     "scale": 0.5,
     "selectionRadius": 2,
-    "attackRadius": 4,
+    "attackRadius": 1,
     "treeSwapRadius": 3,
     "visionRadius": 6,
     "maxHealth": 100,
@@ -15,7 +15,7 @@
     "deathSound": "troop_death",
     "footprint": { "forward": 0, "backward": 0, "left": 0, "right": 0 },
     "moveSpeed": 100,
-    "actions": ["move"]
+    "actions": ["move", "c4"]
   },
   "grunt": {
     "spritePath": "./assets/troops/grunt/sprite/",
@@ -63,13 +63,13 @@
     "attackRadius": 3,
     "treeSwapRadius": 5,
     "visionRadius": 3,
-    "maxHealth": 200,
+    "maxHealth": 150,
     "spriteYOffset": 48,
     "moveSound": "tank_move",
     "deathSound": "troop_death",
     "footprint": { "forward": 1, "backward": 0, "left": 0, "right": 0 },
     "moveSpeed": 100,
-    "actions": ["move", "machineGun", "tankShell"]
+    "actions": ["move", "machineGun", "lightShell"]
   },
   "tankDestroyer": {
     "spritePath": "./assets/troops/tankDestroyer/sprite/",
@@ -81,12 +81,12 @@
     "attackRadius": 6,
     "treeSwapRadius": 5,
     "visionRadius": 3,
-    "maxHealth": 150,
+    "maxHealth": 180,
     "spriteYOffset": 48,
     "moveSound": "tank_move",
     "deathSound": "troop_death",
     "footprint": { "forward": 1, "backward": 0, "left": 0, "right": 0 },
     "moveSpeed": 100,
-    "actions": ["move", "tankShell"]
+    "actions": ["move", "heavyShell"]
   }
 }

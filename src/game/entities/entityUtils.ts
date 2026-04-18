@@ -251,12 +251,15 @@ export function initTroopSync(
     }
   });
 }
-
-function getAllAttackActions(type: TroopType): { damage: number; shots: number; shotDelay: number; projectilePath?: string; sound?: string }[] {
+function getAllAttackActions(type: TroopType): {
+  damage: number; shots: number; shotDelay: number;
+  splashRadius: number;
+  projectilePath?: string; sound?: string;
+}[] {
   const def = troopDefs[type] as any;
   if (!def.actions) return [];
 
-  const results: { damage: number; shots: number; shotDelay: number; projectilePath?: string; sound?: string }[] = [];
+  const results = [];
   for (const actionKey of def.actions) {
     const action = (actionDefs as any)[actionKey];
     if (action && action.type === 'attack') {
@@ -264,6 +267,7 @@ function getAllAttackActions(type: TroopType): { damage: number; shots: number; 
         damage: action.damage ?? 20,
         shots: action.shots ?? 1,
         shotDelay: action.shotDelay ?? 200,
+        splashRadius: action.splashRadius ?? 1,
         projectilePath: action.projectilePath,
         sound: action.sound,
       });
@@ -430,17 +434,13 @@ export async function spawnCharacter(
     const attackActions = getAllAttackActions(type);
     if (attackActions.length > 0) {
       const originalOpenAttack = movement.openAttack.bind(movement);
-      movement.openAttack = (
-        callerOnAttackTile?: (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => void,
-        callerDamage?: number,
-        callerShots?: number,
-      ) => {
+      movement.openAttack = (callerOnAttackTile, callerDamage, callerShots) => {
         const matchedAction = attackActions.find(
           a => a.damage === callerDamage && a.shots === callerShots
         ) ?? attackActions[0];
 
         originalOpenAttack(
-          (attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number) => {
+          (attackerId, targetTileX, targetTileY, damage, shots) => {
             colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, shots);
 
             if (matchedAction.sound) {
@@ -448,23 +448,21 @@ export async function spawnCharacter(
               SoundManager.play(matchedAction.sound, screenPos.x, screenPos.y);
             }
 
-            const enemy = CharacterMovement.getEnemyAtTile(targetTileX, targetTileY);
-            if (enemy) {
-              applyMultiHitDamage(
-                movement,
-                enemy,
-                damage,
-                shots,
-                matchedAction.shotDelay,
-                matchedAction.projectilePath,
-                mapData,
-              );
-            }
+            applyMultiHitDamage(
+              movement,
+              targetTileX, targetTileY,
+              damage, shots,
+              matchedAction.shotDelay,
+              matchedAction.splashRadius,
+              matchedAction.projectilePath,
+              mapData,
+            );
 
             callerOnAttackTile?.(attackerId, targetTileX, targetTileY, damage, shots);
           },
           matchedAction.damage,
           matchedAction.shots,
+          matchedAction.splashRadius,
         );
       };
     }
@@ -472,71 +470,79 @@ export async function spawnCharacter(
 
   return movement;
 }
+function applyMultiHitDamage(
+  attacker: CharacterMovement,
+  targetTileX: number,
+  targetTileY: number,
+  damagePerHit: number,
+  shots: number,
+  shotDelay: number,
+  splashRadius: number,
+  projectilePath: string | undefined,
+  mapData: TiledMap,
+): void {
+  const affected: { enemy: CharacterMovement; scaledDamage: number }[] = [];
+  for (const char of (CharacterMovement as any).allCharacters as Set<CharacterMovement>) {
+    if (char.isLocal) continue;
+    let minDist = Infinity;
+    for (const tile of char.getOccupiedTiles()) {
+      const d = Math.abs(tile.tileX - targetTileX) + Math.abs(tile.tileY - targetTileY);
+      if (d < minDist) minDist = d;
+    }
+    if (minDist < splashRadius) {
+      const falloff = (splashRadius - minDist) / splashRadius;
+      const scaled = Math.round(damagePerHit * falloff);
+      if (scaled > 0) affected.push({ enemy: char, scaledDamage: scaled });
+    }
+  }
 
-function applyMultiHitDamage(attacker: CharacterMovement, target: CharacterMovement, damagePerHit: number, shots: number, shotDelay: number, projectilePath: string | undefined, mapData: TiledMap): void {
+  if (affected.length === 0) return;
+
+  const targetScreenPos = tileToScreen(targetTileX, targetTileY, mapData);
+  const endX = targetScreenPos.x;
+  const endY = targetScreenPos.y + mapData.tileheight / 2;
+
+  const applyHit = () => {
+    for (const { enemy, scaledDamage } of affected) {
+      if (enemy.health <= 0) continue;
+      enemy.takeDamage(scaledDamage);
+      enemy.floatingHealthBar?.setHealth(enemy.health);
+
+      const hitPos = tileToScreen(enemy.tileX, enemy.tileY, mapData);
+      SoundManager.play('troop_hit', hitPos.x, hitPos.y);
+
+      if (enemy.health <= 0) {
+        const deathSound = (troopDefs as any)[enemy.troopType]?.deathSound;
+        if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
+        if (enemy.troopType === 'general') {
+          const isLocalGeneral = enemy.ownerId === colyseusClient.sessionId;
+          fireGameOver(!isLocalGeneral);
+        }
+        troopRegistry.delete(enemy.id);
+        enemy.destroy();
+      }
+    }
+  };
+
   if (projectilePath && projectileManager) {
-    const targetScreenPos = tileToScreen(target.tileX, target.tileY, mapData);
-    const targetYOffset = ((troopDefs as any)[target.troopType]?.spriteYOffset ?? 0);
-    const targetY = targetScreenPos.y + mapData.tileheight / 2 + targetYOffset;
-
     projectileManager.spawnBurst(
       projectilePath,
       attacker.sprite.x,
       attacker.sprite.y - (attacker.sprite.height / 2),
-      targetScreenPos.x,
-      targetY - (target.sprite.height / 2),
-      shots,
-      shotDelay,
-      undefined,
-      undefined,
-      (_shotIndex) => {
-        if (target.health <= 0) return;
-        target.takeDamage(damagePerHit);
-        target.floatingHealthBar?.setHealth(target.health);
-
-        const hitPos = tileToScreen(target.tileX, target.tileY, mapData);
-        SoundManager.play('troop_hit', hitPos.x, hitPos.y);
-
-        if (target.health <= 0) {
-          const deathSound = (troopDefs as any)[target.troopType]?.deathSound;
-          if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
-
-          if (target.troopType === 'general') {
-            const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
-            fireGameOver(!isLocalGeneral);
-          }
-          troopRegistry.delete(target.id);
-          target.destroy();
-        }
-      },
+      endX, endY,
+      shots, shotDelay,
+      undefined, undefined,
+      (_shotIndex) => applyHit(),
     );
   } else {
-    let hitsRemaining = shots;
-    function applyNextHit() {
-      if (hitsRemaining <= 0 || target.health <= 0) return;
-      target.takeDamage(damagePerHit);
-      hitsRemaining--;
-
-      const hitPos = tileToScreen(target.tileX, target.tileY, mapData);
-      SoundManager.play('troop_hit', hitPos.x, hitPos.y);
-
-      if (target.health <= 0) {
-        const deathSound = (troopDefs as any)[target.troopType]?.deathSound;
-        if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
-
-        if (target.troopType === 'general') {
-          const isLocalGeneral = target.ownerId === colyseusClient.sessionId;
-          fireGameOver(!isLocalGeneral);
-        }
-        troopRegistry.delete(target.id);
-        target.destroy();
-        return;
-      }
-      if (hitsRemaining > 0) {
-        setTimeout(applyNextHit, shotDelay);
-      }
-    }
-    applyNextHit();
+    let remaining = shots;
+    const next = () => {
+      if (remaining <= 0) return;
+      applyHit();
+      remaining--;
+      if (remaining > 0) setTimeout(next, shotDelay);
+    };
+    next();
   }
 }
 
