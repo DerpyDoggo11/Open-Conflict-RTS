@@ -123,6 +123,9 @@ let intermissionComplete = false;
 let localTeamId = '';
 let projectileManager: ProjectileManager | null = null;
 
+// Store refs so the splashDamage handler can use them
+let syncMapData: TiledMap | null = null;
+
 type GameOverListener = (isVictory: boolean) => void;
 const gameOverListeners: GameOverListener[] = [];
 let gameOverFired = false;
@@ -153,6 +156,8 @@ export function initTroopSync(
   objectsContainer: PIXI.Container,
   tilesetTextures: Map<number, PIXI.Texture>,
 ): void {
+  syncMapData = mapData;
+
   if (!projectileManager) {
     objectsContainer.sortableChildren = true;
     projectileManager = new ProjectileManager(app, objectsContainer);
@@ -184,51 +189,107 @@ export function initTroopSync(
     }
   });
 
+  // ── Server-authoritative damage: handle splashDamage for ALL clients ──
+  // This is now the SINGLE path for applying damage. Both the attacker
+  // and the defender receive this broadcast and apply it identically.
+  colyseusClient.onSplashDamage((msg) => {
+    const attacker = troopRegistry.get(msg.attackerId);
+    const isLocalAttacker = attacker?.ownerId === colyseusClient.sessionId;
+
+    // Look up action config for projectile/sound from the attacker's troop type
+    const action = attacker
+      ? getActionForTroop(attacker.troopType, 'attack', msg.projectileDamage)
+      : null;
+
+    // Play attack sound at attacker position (if we have the attacker)
+    if (attacker && action?.sound) {
+      SoundManager.play(action.sound, attacker.sprite.x, attacker.sprite.y);
+    }
+
+    // Play shoot animation on attacker (both clients)
+    if (attacker) {
+      const dx = msg.targetTileX - attacker.tileX;
+      const dy = msg.targetTileY - attacker.tileY;
+      if (dx !== 0 || dy !== 0) {
+        attacker.facingDx = Math.sign(dx) as -1 | 0 | 1;
+        attacker.facingDy = Math.sign(dy) as -1 | 0 | 1;
+      }
+      attacker.playShoot();
+    }
+
+    // Compute target screen position for projectiles
+    const targetScreenPos = tileToScreen(msg.targetTileX, msg.targetTileY, mapData);
+    const endX = targetScreenPos.x;
+    const endY = targetScreenPos.y + mapData.tileheight / 2;
+
+    // Apply damage from server-authoritative victim list
+    const applyServerDamage = () => {
+      for (const victim of msg.victims) {
+        const m = troopRegistry.get(victim.id);
+        if (!m) continue;
+
+        // Set health to server-authoritative value
+        m.health = victim.newHealth;
+        m.takeDamage(0); // triggers health change listeners
+        m.floatingHealthBar?.setHealth(victim.newHealth);
+
+        const hitPos = tileToScreen(m.tileX, m.tileY, mapData);
+        SoundManager.play('troop_hit', hitPos.x, hitPos.y);
+
+        if (victim.newHealth <= 0) {
+          const deathSound = (troopDefs as any)[m.troopType]?.deathSound;
+          if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
+          if (m.troopType === 'general') {
+            const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
+            fireGameOver(!isLocalGeneral);
+          }
+          troopRegistry.delete(victim.id);
+          m.destroy();
+        }
+      }
+    };
+
+    // Spawn projectiles if the action has a projectile path
+    if (action?.projectilePath && projectileManager && attacker) {
+      projectileManager.spawnBurst(
+        action.projectilePath,
+        attacker.sprite.x,
+        attacker.sprite.y - (attacker.sprite.height / 2),
+        endX, endY,
+        msg.shots,
+        action.shotDelay ?? 200,
+        undefined, undefined,
+        (_shotIndex) => applyServerDamage(),
+      );
+    } else {
+      // No projectile — apply damage in bursts with delay
+      const shotDelay = action?.shotDelay ?? 200;
+      let remaining = msg.shots;
+      const next = () => {
+        if (remaining <= 0) return;
+        applyServerDamage();
+        remaining--;
+        if (remaining > 0) setTimeout(next, shotDelay);
+      };
+      next();
+    }
+  });
+
+  // ── Legacy troopDamage handler (for non-splash single-target attacks) ──
+  // Keep this for backward compat but the main path is now splashDamage above.
   colyseusClient.onTroopDamage((msg) => {
     const m = troopRegistry.get(msg.id);
     if (!m) return;
+    // Skip if we already handled this via splashDamage
+    // (the server now sends splashDamage for attackTile too,
+    // so this handler mainly catches any leftover attackTroop messages)
     const attacker = troopRegistry.get(msg.attackerId);
     if (attacker && attacker.ownerId === colyseusClient.sessionId) return;
 
-    if (attacker && projectileManager) {
-      const action = getActionForTroop(attacker.troopType, 'attack', msg.damage);
-
-      if (action?.sound) {
-        SoundManager.play(action.sound, attacker.sprite.x, attacker.sprite.y);
-      }
-
-      if (action?.projectilePath) {
-        const targetScreenPos = tileToScreen(m.tileX, m.tileY, mapData);
-        const targetY = targetScreenPos.y + mapData.tileheight / 2 + ((troopDefs as any)[m.troopType]?.spriteYOffset ?? 0);
-        projectileManager.spawn({
-          texturePath: action.projectilePath,
-          startX: attacker.sprite.x,
-          startY: attacker.sprite.y - (attacker.sprite.height / 2),
-          endX: targetScreenPos.x,
-          endY: targetY - (m.sprite.height / 2),
-          onImpact: () => {
-            m.health = msg.newHealth;
-            m.takeDamage(0);
-            m.health = msg.newHealth;
-            m.floatingHealthBar?.setHealth(m.health);
-            if (m.health <= 0) {
-              if (m.troopType === 'general') {
-                const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
-                fireGameOver(!isLocalGeneral);
-              }
-              m.destroy();
-              troopRegistry.delete(msg.id);
-            }
-          },
-        });
-        return;
-      }
-    }
-
     m.health = msg.newHealth;
     m.takeDamage(0);
-    m.health = msg.newHealth;
-    m.floatingHealthBar?.setHealth(m.health);
+    m.floatingHealthBar?.setHealth(msg.newHealth);
+
     if (m.health <= 0) {
       if (m.troopType === 'general') {
         const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
@@ -251,6 +312,7 @@ export function initTroopSync(
     }
   });
 }
+
 function getAllAttackActions(type: TroopType): {
   damage: number; shots: number; shotDelay: number;
   splashRadius: number;
@@ -441,23 +503,19 @@ export async function spawnCharacter(
 
         originalOpenAttack(
           (attackerId, targetTileX, targetTileY, damage, shots) => {
-            colyseusClient.sendAttackTile(attackerId, targetTileX, targetTileY, damage, shots);
-
-            if (matchedAction.sound) {
-              const screenPos = tileToScreen(movement.tileX, movement.tileY, mapData);
-              SoundManager.play(matchedAction.sound, screenPos.x, screenPos.y);
-            }
-
-            applyMultiHitDamage(
-              movement,
-              targetTileX, targetTileY,
-              damage, shots,
-              matchedAction.shotDelay,
+            // ── SERVER-AUTHORITATIVE: only send the intent ──
+            // Do NOT apply damage locally. The server will compute
+            // damage and broadcast splashDamage to all clients.
+            colyseusClient.sendSplashAttackTile(
+              attackerId,
+              targetTileX,
+              targetTileY,
+              damage,
+              shots,
               matchedAction.splashRadius,
-              matchedAction.projectilePath,
-              mapData,
             );
 
+            // Notify the caller (e.g. HUD) that an attack was fired
             callerOnAttackTile?.(attackerId, targetTileX, targetTileY, damage, shots);
           },
           matchedAction.damage,
@@ -470,81 +528,10 @@ export async function spawnCharacter(
 
   return movement;
 }
-function applyMultiHitDamage(
-  attacker: CharacterMovement,
-  targetTileX: number,
-  targetTileY: number,
-  damagePerHit: number,
-  shots: number,
-  shotDelay: number,
-  splashRadius: number,
-  projectilePath: string | undefined,
-  mapData: TiledMap,
-): void {
-  const affected: { enemy: CharacterMovement; scaledDamage: number }[] = [];
-  for (const char of (CharacterMovement as any).allCharacters as Set<CharacterMovement>) {
-    if (char.isLocal) continue;
-    let minDist = Infinity;
-    for (const tile of char.getOccupiedTiles()) {
-      const d = Math.abs(tile.tileX - targetTileX) + Math.abs(tile.tileY - targetTileY);
-      if (d < minDist) minDist = d;
-    }
-    if (minDist < splashRadius) {
-      const falloff = (splashRadius - minDist) / splashRadius;
-      const scaled = Math.round(damagePerHit * falloff);
-      if (scaled > 0) affected.push({ enemy: char, scaledDamage: scaled });
-    }
-  }
 
-  if (affected.length === 0) return;
-
-  const targetScreenPos = tileToScreen(targetTileX, targetTileY, mapData);
-  const endX = targetScreenPos.x;
-  const endY = targetScreenPos.y + mapData.tileheight / 2;
-
-  const applyHit = () => {
-    for (const { enemy, scaledDamage } of affected) {
-      if (enemy.health <= 0) continue;
-      enemy.takeDamage(scaledDamage);
-      enemy.floatingHealthBar?.setHealth(enemy.health);
-
-      const hitPos = tileToScreen(enemy.tileX, enemy.tileY, mapData);
-      SoundManager.play('troop_hit', hitPos.x, hitPos.y);
-
-      if (enemy.health <= 0) {
-        const deathSound = (troopDefs as any)[enemy.troopType]?.deathSound;
-        if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
-        if (enemy.troopType === 'general') {
-          const isLocalGeneral = enemy.ownerId === colyseusClient.sessionId;
-          fireGameOver(!isLocalGeneral);
-        }
-        troopRegistry.delete(enemy.id);
-        enemy.destroy();
-      }
-    }
-  };
-
-  if (projectilePath && projectileManager) {
-    projectileManager.spawnBurst(
-      projectilePath,
-      attacker.sprite.x,
-      attacker.sprite.y - (attacker.sprite.height / 2),
-      endX, endY,
-      shots, shotDelay,
-      undefined, undefined,
-      (_shotIndex) => applyHit(),
-    );
-  } else {
-    let remaining = shots;
-    const next = () => {
-      if (remaining <= 0) return;
-      applyHit();
-      remaining--;
-      if (remaining > 0) setTimeout(next, shotDelay);
-    };
-    next();
-  }
-}
+// ── applyMultiHitDamage REMOVED ──
+// Damage is no longer computed on the client. The server handles all
+// damage calculation and broadcasts results via the splashDamage message.
 
 export function revealAllEnemies(localSessionId: string): void {
   for (const movement of troopRegistry.values()) {
