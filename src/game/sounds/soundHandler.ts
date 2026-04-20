@@ -73,7 +73,7 @@ export class SoundManager {
       SoundManager.buffers.set(path, audioBuf);
       return audioBuf;
     } catch (e) {
-      console.warn(`[SoundManager] Failed to load ${path}:`, e);
+      console.warn(`failed to load ${path}:`, e);
       return null;
     }
   }
@@ -88,7 +88,7 @@ export class SoundManager {
 
     const def = SoundManager.defs.get(name);
     if (!def) {
-      console.warn(`[SoundManager] Unknown sound: "${name}"`);
+      console.warn(`unknown sound: "${name}"`);
       return null;
     }
 

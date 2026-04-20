@@ -1,4 +1,4 @@
-const USE_LOCAL = false;
+const USE_LOCAL = true;
 
 const LOCAL_WS  = "ws://localhost:2567";
 const LOCAL_HTTP = "http://localhost:2567";

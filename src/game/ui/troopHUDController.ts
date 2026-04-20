@@ -77,10 +77,11 @@ export class TroopHUDController {
       return;
     }
 
+    const isSpectator = colyseusClient.isSpectator;
     const isOwned = character.ownerId === colyseusClient.sessionId;
     const def = troopDefs[character.troopType as keyof typeof troopDefs];
 
-    const actions = !isOwned ? [] : (def.actions as string[]).map(actionId => {
+    const actions = (!isOwned || isSpectator) ? [] : (def.actions as string[]).map(actionId => {
       const actionDef = actionDefs[actionId as keyof typeof actionDefs] as ActionDef;
       return {
         id: actionId,
@@ -135,6 +136,7 @@ export class TroopHUDController {
 
   private _toggleMove(actionId: string = 'move'): void {
     if (!this.selected) return;
+    if (colyseusClient.isSpectator) return;
 
     if (this.mode === 'move') {
       this._exitMode();
@@ -159,6 +161,7 @@ export class TroopHUDController {
   
   private _toggleAttack(actionId: string, damage: number, shots: number, splashRadius: number): void {
     if (!this.selected) return;
+    if (colyseusClient.isSpectator) return; 
 
     if (this.mode === 'attack' && this._activeAttackActionId === actionId) {
       this._exitMode();

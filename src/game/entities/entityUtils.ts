@@ -123,7 +123,6 @@ let intermissionComplete = false;
 let localTeamId = '';
 let projectileManager: ProjectileManager | null = null;
 
-// Store refs so the splashDamage handler can use them
 let syncMapData: TiledMap | null = null;
 
 type GameOverListener = (isVictory: boolean) => void;
@@ -163,8 +162,40 @@ export function initTroopSync(
     projectileManager = new ProjectileManager(app, objectsContainer);
   }
 
+  const isSpectator = colyseusClient.isSpectator;
+
+  colyseusClient.onTroopSnapshot(async (troops) => {
+    for (const t of troops) {
+      if (troopRegistry.has(t.id)) continue;
+
+      const movement = await spawnCharacter(
+        t.type as TroopType,
+        t.tileX, t.tileY,
+        mapData, hudContainer,
+        app, viewport, objectsContainer, tilesetTextures,
+        false,
+      );
+
+      movement.ownerId = t.ownerId;
+      movement.id = t.id;
+      movement.health = t.health;
+      movement.maxHealth = (troopDefs[t.type as TroopType]?.maxHealth) ?? t.health;
+
+      movement.facingDx = t.facingDx;
+      movement.facingDy = t.facingDy;
+      movement.setTextures(textureCache.get(t.type) ?? new Map());
+
+      movement.floatingHealthBar?.setHealth(t.health);
+
+      movement.setVisible(true);
+
+      troopRegistry.set(t.id, movement);
+    }
+  });
+
   colyseusClient.onTroopSpawn(async (msg) => {
-    if (msg.ownerId === colyseusClient.sessionId) return;
+    if (!isSpectator && msg.ownerId === colyseusClient.sessionId) return;
+    if (troopRegistry.has(msg.id)) return;
 
     const movement = await spawnCharacter(
       msg.type as TroopType,
@@ -174,11 +205,20 @@ export function initTroopSync(
       false,
     );
 
-    if (intermissionComplete) movement.setVisible(true);
+    if (isSpectator || intermissionComplete) {
+      movement.setVisible(true);
+    }
 
     movement.ownerId = msg.ownerId;
     movement.id = msg.id;
     movement.health = msg.health;
+
+    if (msg.facingDx !== undefined && msg.facingDy !== undefined) {
+      movement.facingDx = msg.facingDx;
+      movement.facingDy = msg.facingDy;
+      movement.setTextures(textureCache.get(msg.type) ?? new Map());
+    }
+
     troopRegistry.set(msg.id, movement);
   });
 
@@ -189,24 +229,17 @@ export function initTroopSync(
     }
   });
 
-  // ── Server-authoritative damage: handle splashDamage for ALL clients ──
-  // This is now the SINGLE path for applying damage. Both the attacker
-  // and the defender receive this broadcast and apply it identically.
   colyseusClient.onSplashDamage((msg) => {
     const attacker = troopRegistry.get(msg.attackerId);
-    const isLocalAttacker = attacker?.ownerId === colyseusClient.sessionId;
 
-    // Look up action config for projectile/sound from the attacker's troop type
     const action = attacker
       ? getActionForTroop(attacker.troopType, 'attack', msg.projectileDamage)
       : null;
 
-    // Play attack sound at attacker position (if we have the attacker)
     if (attacker && action?.sound) {
       SoundManager.play(action.sound, attacker.sprite.x, attacker.sprite.y);
     }
 
-    // Play shoot animation on attacker (both clients)
     if (attacker) {
       const dx = msg.targetTileX - attacker.tileX;
       const dy = msg.targetTileY - attacker.tileY;
@@ -217,20 +250,17 @@ export function initTroopSync(
       attacker.playShoot();
     }
 
-    // Compute target screen position for projectiles
     const targetScreenPos = tileToScreen(msg.targetTileX, msg.targetTileY, mapData);
     const endX = targetScreenPos.x;
     const endY = targetScreenPos.y + mapData.tileheight / 2;
 
-    // Apply damage from server-authoritative victim list
     const applyServerDamage = () => {
       for (const victim of msg.victims) {
         const m = troopRegistry.get(victim.id);
         if (!m) continue;
 
-        // Set health to server-authoritative value
         m.health = victim.newHealth;
-        m.takeDamage(0); // triggers health change listeners
+        m.takeDamage(0);
         m.floatingHealthBar?.setHealth(victim.newHealth);
 
         const hitPos = tileToScreen(m.tileX, m.tileY, mapData);
@@ -239,7 +269,7 @@ export function initTroopSync(
         if (victim.newHealth <= 0) {
           const deathSound = (troopDefs as any)[m.troopType]?.deathSound;
           if (deathSound) SoundManager.play(deathSound, hitPos.x, hitPos.y);
-          if (m.troopType === 'general') {
+          if (m.troopType === 'general' && !isSpectator) {
             const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
             fireGameOver(!isLocalGeneral);
           }
@@ -249,7 +279,6 @@ export function initTroopSync(
       }
     };
 
-    // Spawn projectiles if the action has a projectile path
     if (action?.projectilePath && projectileManager && attacker) {
       projectileManager.spawnBurst(
         action.projectilePath,
@@ -262,7 +291,6 @@ export function initTroopSync(
         (_shotIndex) => applyServerDamage(),
       );
     } else {
-      // No projectile — apply damage in bursts with delay
       const shotDelay = action?.shotDelay ?? 200;
       let remaining = msg.shots;
       const next = () => {
@@ -275,23 +303,18 @@ export function initTroopSync(
     }
   });
 
-  // ── Legacy troopDamage handler (for non-splash single-target attacks) ──
-  // Keep this for backward compat but the main path is now splashDamage above.
   colyseusClient.onTroopDamage((msg) => {
     const m = troopRegistry.get(msg.id);
     if (!m) return;
-    // Skip if we already handled this via splashDamage
-    // (the server now sends splashDamage for attackTile too,
-    // so this handler mainly catches any leftover attackTroop messages)
     const attacker = troopRegistry.get(msg.attackerId);
-    if (attacker && attacker.ownerId === colyseusClient.sessionId) return;
+    if (!isSpectator && attacker && attacker.ownerId === colyseusClient.sessionId) return;
 
     m.health = msg.newHealth;
     m.takeDamage(0);
     m.floatingHealthBar?.setHealth(msg.newHealth);
 
     if (m.health <= 0) {
-      if (m.troopType === 'general') {
+      if (m.troopType === 'general' && !isSpectator) {
         const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
         fireGameOver(!isLocalGeneral);
       }
@@ -303,7 +326,7 @@ export function initTroopSync(
   colyseusClient.onTroopDied((id) => {
     const m = troopRegistry.get(id);
     if (m) {
-      if (m.troopType === 'general') {
+      if (m.troopType === 'general' && !isSpectator) {
         const isLocalGeneral = m.ownerId === colyseusClient.sessionId;
         fireGameOver(!isLocalGeneral);
       }
@@ -360,6 +383,7 @@ export async function spawnCharacter(
   isLocal: boolean = true,
 ): Promise<CharacterMovement> {
   const def = troopDefs[type];
+  const isSpectator = colyseusClient.isSpectator;
 
   let troopTextures = textureCache.get(type);
   if (!troopTextures || troopTextures.size === 0) {
@@ -399,7 +423,7 @@ export async function spawnCharacter(
   sprite.scale.set(def.scale);
 
   if (!isLocal) {
-    sprite.visible = false;
+    sprite.visible = isSpectator ? true : false;
     sprite.tint = new PIXI.Color('#D9CACC');
   }
 
@@ -437,7 +461,7 @@ export async function spawnCharacter(
     movement.floatingHealthBar = bar;
   }
 
-  if (isLocal) {
+  if (isLocal && !isSpectator) {
     movement.teamId = localTeamId;
 
     if (localTeamId === 'Blue') {
@@ -450,10 +474,10 @@ export async function spawnCharacter(
     movement.setTextures(troopTextures);
   }
 
-  if (isLocal) {
+  if (isLocal && !isSpectator) {
     const troopId = `${colyseusClient.sessionId}_${type}_${tileX}_${tileY}_${Date.now()}`;
     troopRegistry.set(troopId, movement);
-    colyseusClient.spawnTroop(troopId, type, tileX, tileY, def.maxHealth);
+    colyseusClient.spawnTroop(troopId, type, tileX, tileY, def.maxHealth, movement.facingDx, movement.facingDy);
     movement.id = troopId;
     movement.ownerId = colyseusClient.sessionId;
 
@@ -492,7 +516,7 @@ export async function spawnCharacter(
     }
   });
 
-  if (isLocal) {
+  if (isLocal && !isSpectator) {
     const attackActions = getAllAttackActions(type);
     if (attackActions.length > 0) {
       const originalOpenAttack = movement.openAttack.bind(movement);
@@ -503,19 +527,10 @@ export async function spawnCharacter(
 
         originalOpenAttack(
           (attackerId, targetTileX, targetTileY, damage, shots) => {
-            // ── SERVER-AUTHORITATIVE: only send the intent ──
-            // Do NOT apply damage locally. The server will compute
-            // damage and broadcast splashDamage to all clients.
             colyseusClient.sendSplashAttackTile(
-              attackerId,
-              targetTileX,
-              targetTileY,
-              damage,
-              shots,
-              matchedAction.splashRadius,
+              attackerId, targetTileX, targetTileY,
+              damage, shots, matchedAction.splashRadius,
             );
-
-            // Notify the caller (e.g. HUD) that an attack was fired
             callerOnAttackTile?.(attackerId, targetTileX, targetTileY, damage, shots);
           },
           matchedAction.damage,
@@ -529,13 +544,15 @@ export async function spawnCharacter(
   return movement;
 }
 
-// ── applyMultiHitDamage REMOVED ──
-// Damage is no longer computed on the client. The server handles all
-// damage calculation and broadcasts results via the splashDamage message.
-
 export function revealAllEnemies(localSessionId: string): void {
   for (const movement of troopRegistry.values()) {
     if (movement.ownerId !== localSessionId) movement.setVisible(true);
+  }
+}
+
+export function revealAllTroops(): void {
+  for (const movement of troopRegistry.values()) {
+    movement.setVisible(true);
   }
 }
 

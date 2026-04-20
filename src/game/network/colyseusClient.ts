@@ -12,6 +12,7 @@ export interface TickMessage {
 export interface TroopSpawnMsg {
   id: string; type: string; tileX: number; tileY: number;
   health: number; ownerId: string;
+  facingDx?: number; facingDy?: number;
 }
 
 export interface TroopMoveMsg {
@@ -37,6 +38,11 @@ export interface SplashDamageMsg {
   victims: SplashDamageVictim[];
 }
 
+export interface TroopSnapshotEntry {
+  id: string; type: string; tileX: number; tileY: number;
+  health: number; ownerId: string; facingDx: number; facingDy: number;
+}
+
 export class ColyseusClient {
   private client: Client;
   private room: Room | null = null;
@@ -50,32 +56,73 @@ export class ColyseusClient {
   private troopDiedListeners: ((id: string) => void)[] = [];
   private troopDamageListeners: ((msg: TroopDamageMsg) => void)[] = [];
   private splashDamageListeners: ((msg: SplashDamageMsg) => void)[] = [];
+  private troopSnapshotListeners: ((troops: TroopSnapshotEntry[]) => void)[] = [];
+  private roleListeners: ((role: string, team?: string) => void)[] = [];
   private _seenTroopIds = new Set<string>();
+
+  private _pendingSpawnBuffer: TroopSpawnMsg[] = [];
+  private _pendingSnapshotBuffer: TroopSnapshotEntry[][] = [];
+
+  public isSpectator: boolean = false;
 
 
   constructor() {
     this.client = new Client(SERVER_WS_URL);
   }
 
+  async joinGameAsSpectator(roomId: string): Promise<void> {
+    const playerName = localStorage.getItem('playerName') ?? 'Spectator';
+    this.isSpectator = true;
+    await this._joinRoom(roomId, playerName, true);
+  }
+
   async joinGame(playerName: string): Promise<void> {
+    this.isSpectator = false;
+
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('roomId');
+    await this._joinRoom(roomId, playerName, false);
+  }
+
+  private async _joinRoom(roomId: string | null, playerName: string, spectate: boolean): Promise<void> {
     this.troopSpawnListeners = [];
     this.troopMoveListeners = [];
     this.troopDiedListeners = [];
     this.troopDamageListeners = [];
     this.splashDamageListeners = [];
+    this.troopSnapshotListeners = [];
     this.tickListeners = [];
     this.playerCountListeners = [];
     this.gameStartListeners = [];
     this.readyStateListeners = [];
+    this.roleListeners = [];
     this._seenTroopIds.clear();
-
-    const params = new URLSearchParams(window.location.search);
-    const roomId = params.get('roomId');
+    this._pendingSpawnBuffer = [];
+    this._pendingSnapshotBuffer = [];
 
     try {
-      this.room = roomId
-        ? await this.client.joinById(roomId, { name: playerName })
-        : await this.client.joinOrCreate("game_room", { name: playerName });
+      if (roomId) {
+        this.room = await this.client.joinById(roomId, { name: playerName, spectate });
+      } else {
+        this.room = await this.client.joinOrCreate("game_room", { name: playerName, spectate });
+      }
+
+      this.room.onMessage("assignRole", (msg: { role: string; team?: string }) => {
+        this.isSpectator = msg.role === "spectator";
+        this.roleListeners.forEach(fn => fn(msg.role, msg.team));
+      });
+
+      this.room.onMessage("troopSnapshot", (msg: { troops: TroopSnapshotEntry[] }) => {
+        for (const t of msg.troops) {
+          this._seenTroopIds.add(t.id);
+        }
+
+        if (this.troopSnapshotListeners.length === 0) {
+          this._pendingSnapshotBuffer.push(msg.troops);
+        } else {
+          this.troopSnapshotListeners.forEach(fn => fn(msg.troops));
+        }
+      });
 
       this.room.onMessage("chat", (msg: ChatMessage) => {
         this.chatListeners.forEach(fn => fn(msg));
@@ -99,11 +146,12 @@ export class ColyseusClient {
         this.splashDamageListeners.forEach(fn => fn(msg));
       });
       this.room.onMessage("playerReady", (msg: { readyCount: number; totalCount: number }) => {
-        this.readyStateListeners.forEach(fn => fn(msg.readyCount,msg.totalCount));
+        this.readyStateListeners.forEach(fn => fn(msg.readyCount, msg.totalCount));
       });
       this.room.onMessage("playersUpdate", (teams) => {
         this.playersUpdateListeners.forEach(fn => fn(teams));
       });
+
       this.room.onStateChange.once(() => {
         const callbacks = Callbacks.get(this.room!);
         callbacks.onAdd("troops", (troop: any, troopId: unknown) => {
@@ -120,7 +168,11 @@ export class ColyseusClient {
               ownerId: troop.ownerId,
           };
 
-          this.troopSpawnListeners.forEach(fn => fn(msg));
+          if (this.troopSpawnListeners.length === 0) {
+            this._pendingSpawnBuffer.push(msg);
+          } else {
+            this.troopSpawnListeners.forEach(fn => fn(msg));
+          }
 
           callbacks.onChange(troop, () => {
               this.troopMoveListeners.forEach(fn => fn({
@@ -144,30 +196,32 @@ export class ColyseusClient {
     }
   }
 
-  spawnTroop(id: string, type: string, tileX: number, tileY: number, health: number): void {
-    this.room?.send("spawnTroop", { id, type, tileX, tileY, health });
+  spawnTroop(id: string, type: string, tileX: number, tileY: number, health: number,
+             facingDx: number = 1, facingDy: number = 1): void {
+    if (this.isSpectator) return;
+    this.room?.send("spawnTroop", { id, type, tileX, tileY, health, facingDx, facingDy });
   }
 
   moveTroop(id: string, tileX: number, tileY: number): void {
+    if (this.isSpectator) return;
     this.room?.send("moveTroop", { id, tileX, tileY });
   }
 
   attackTroop(attackerId: string, targetId: string, damage: number): void {
+    if (this.isSpectator) return;
     this.room?.send("attackTroop", { attackerId, targetId, damage });
   }
 
   sendAttackTile(attackerId: string, targetTileX: number, targetTileY: number, damage: number, shots: number = 1): void {
+    if (this.isSpectator) return;
     this.room?.send('attackTile', { attackerId, targetTileX, targetTileY, damage, fireRate: shots });
   }
 
   sendSplashAttackTile(
-    attackerId: string,
-    targetTileX: number,
-    targetTileY: number,
-    damage: number,
-    shots: number,
-    splashRadius: number,
+    attackerId: string, targetTileX: number, targetTileY: number,
+    damage: number, shots: number, splashRadius: number,
   ): void {
+    if (this.isSpectator) return;
     this.room?.send('splashAttackTile', {
       attackerId, targetTileX, targetTileY, damage, fireRate: shots, splashRadius,
     });
@@ -178,6 +232,7 @@ export class ColyseusClient {
   }
 
   sendReady(isReady: boolean): void {
+    if (this.isSpectator) return;
     this.room?.send("ready", { isReady });
   }
 
@@ -190,7 +245,28 @@ export class ColyseusClient {
     this.playersUpdateListeners.push(fn);
   }
 
-  onTroopSpawn(fn: (msg: TroopSpawnMsg) => void): void { this.troopSpawnListeners.push(fn); }
+  onRole(fn: (role: string, team?: string) => void): void { this.roleListeners.push(fn); }
+
+  onTroopSpawn(fn: (msg: TroopSpawnMsg) => void): void {
+    this.troopSpawnListeners.push(fn);
+    if (this._pendingSpawnBuffer.length > 0) {
+      const buffered = this._pendingSpawnBuffer.splice(0);
+      for (const msg of buffered) {
+        this.troopSpawnListeners.forEach(listener => listener(msg));
+      }
+    }
+  }
+
+  onTroopSnapshot(fn: (troops: TroopSnapshotEntry[]) => void): void {
+    this.troopSnapshotListeners.push(fn);
+    if (this._pendingSnapshotBuffer.length > 0) {
+      const buffered = this._pendingSnapshotBuffer.splice(0);
+      for (const troops of buffered) {
+        this.troopSnapshotListeners.forEach(listener => listener(troops));
+      }
+    }
+  }
+
   onTroopMove(fn: (msg: TroopMoveMsg) => void): void { this.troopMoveListeners.push(fn); }
   onTroopDied(fn: (id: string) => void): void { this.troopDiedListeners.push(fn); }
   onTroopDamage(fn: (msg: TroopDamageMsg) => void): void { this.troopDamageListeners.push(fn); }
